@@ -381,6 +381,18 @@ select, input[type="text"], input[type="number"], textarea {
   cursor: text;
 }
 
+/* The gaps above and below a compartment's members, where a double-click adds one.
+   They are only a few pixels tall, so they tint on hover — without that there is nothing
+   to tell you the gap is a target at all. */
+.line-hit.insert {
+  cursor: cell;
+}
+
+.line-hit.insert:hover {
+  fill: var(--accent);
+  fill-opacity: 0.13;
+}
+
 /* A real HTML input positioned over the line it is editing — not SVG text, and not a
    foreignObject. That is what makes the caret, selection, clipboard, and IME behave
    exactly as they do in any other text field. */

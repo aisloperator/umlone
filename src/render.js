@@ -186,7 +186,10 @@
   // truth for "where is this line?" — used to draw the text, to place the invisible click
   // targets, and to position the in-place editor.
   //
-  // A `placeholder` box is an empty compartment: clicking it means "create the first one".
+  // Boxes marked `insert` are not rows but gaps between them: the compartment's padding
+  // above the first member and below the last. Double-clicking one adds a member at that
+  // position. They never overlap a row, because clicking a row must always mean editing
+  // that row and nothing else.
   function lineBoxes(doc, element, node, info) {
     info = info || layout(doc, element, node);
     var width = node.w;
@@ -212,42 +215,74 @@
     }
 
     var y = 0;
-    info.bands.forEach(function (band) {
-      if (band.lines.length) {
-        band.lines.forEach(function (line, i) {
-          if (!line.editKind) { return; }   // stereotype line: edited in the inspector
-          boxes.push({
-            kind: line.editKind,
-            index: line.editIndex,
-            x: 0,
-            y: y + PAD_Y + i * LINE_H,
-            w: width,
-            h: LINE_H,
-            font: line.font,
-            align: band.align
-          });
-        });
-      } else if (band.editKind) {
+    var lastBand = info.bands.length - 1;
+
+    info.bands.forEach(function (band, bandIndex) {
+      var top = y;
+      var height = bandHeight(band);
+      var isLast = bandIndex === lastBand;
+
+      // `extend` hands the slack at the bottom of an over-tall box to the last
+      // compartment. That slack is usually the largest clickable area on the box, which
+      // makes "add another member here" easy to find rather than a 6px sliver.
+      function insertStrip(index, stripY, stripH, extend) {
         boxes.push({
           kind: band.editKind,
-          index: 0,
-          x: 0, y: y, w: width, h: LINE_H,
-          font: 'member', align: 'start',
-          placeholder: true
+          index: index,
+          x: 0,
+          y: stripY,
+          w: width,
+          h: (extend && isLast) ? Math.max(stripH, node.h - stripY) : stripH,
+          font: 'member',
+          align: 'start',
+          insert: true
         });
       }
-      y += bandHeight(band);
+
+      if (!band.lines.length) {
+        if (band.editKind) { insertStrip(0, top, height, true); }
+        y += height;
+        return;
+      }
+
+      if (band.editKind) { insertStrip(0, top, PAD_Y, false); }
+
+      band.lines.forEach(function (line, i) {
+        if (!line.editKind) { return; }   // stereotype line: edited in the inspector
+        boxes.push({
+          kind: line.editKind,
+          index: line.editIndex,
+          x: 0,
+          y: top + PAD_Y + i * LINE_H,
+          w: width,
+          h: LINE_H,
+          font: line.font,
+          align: band.align
+        });
+      });
+
+      if (band.editKind) {
+        insertStrip(band.lines.length,
+                    top + PAD_Y + band.lines.length * LINE_H, PAD_Y, true);
+      }
+
+      y += height;
     });
 
     return boxes;
   }
 
   // The rectangle to put a text editor over, in absolute diagram coordinates.
+  //
+  // Insertion strips are skipped: they share a kind and index with a real row (the strip
+  // above the list and the first row are both `attribute 0`), and an editor must always
+  // land on the row, never on the gap.
   function editBox(doc, element, node, target) {
     var boxes = lineBoxes(doc, element, node);
 
     for (var i = 0; i < boxes.length; i++) {
       var box = boxes[i];
+      if (box.insert) { continue; }
       if (box.kind === target.kind && box.index === target.index) {
         return {
           x: node.x + box.x,
@@ -263,11 +298,11 @@
     return null;
   }
 
-  // Editable slots in visual order, for arrow-key and Tab traversal. Placeholders are
-  // left out: arrowing into an empty compartment should not silently create a member.
+  // Editable slots in visual order, for arrow-key and Tab traversal. Insertion strips are
+  // left out: arrowing through a box should not silently create members.
   function editSlots(doc, element, node) {
     return lineBoxes(doc, element, node)
-      .filter(function (box) { return !box.placeholder; })
+      .filter(function (box) { return !box.insert; })
       .map(function (box) { return { kind: box.kind, index: box.index }; });
   }
 
@@ -336,9 +371,10 @@
         y: box.y,
         width: box.w,
         height: box.h,
-        'class': 'line-hit',
+        'class': 'line-hit' + (box.insert ? ' insert' : ''),
         'data-edit-kind': box.kind,
-        'data-edit-index': box.index
+        'data-edit-index': box.index,
+        'data-edit-insert': box.insert ? '1' : null
       }, parent);
     });
   }

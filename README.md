@@ -72,17 +72,27 @@ opens the field immediately, so creating a class and naming it is one gesture.
 
 | Key | Effect |
 | --- | --- |
-| Enter | Commit and stop editing |
+| Enter, on a member row with text | Commit and open a new row below |
+| Enter, on a row that is empty | Finish — the blank row is dropped |
+| Enter, on a name or note | Commit and finish |
+| Shift+Enter | Commit and finish without adding a row |
 | Escape | Discard the edit |
-| Shift+Enter | Commit, add another row below, and keep typing |
-| ↑ / ↓ | Commit and move to the row above/below |
-| Tab / Shift+Tab | Same as ↓ / ↑ |
+| ↑ / ↓, Tab / Shift+Tab | Commit and move between rows |
 | Backspace in an empty row | Delete the row and move up |
 
+So a whole attribute list is typed straight down: type, Enter, type, Enter, and one last
+Enter on the empty row to stop. That final Enter tidies up after itself, because
+committing an empty row deletes it — which is also how a member is removed, along with
+Backspace in an already-empty row.
+
 Arrow keys cross compartment boundaries, so ↓ walks from the class name through every
-attribute and on into the operations without touching the mouse. Committing an empty row
-deletes that member — that plus Backspace is how members are removed from the keyboard.
-Clicking the blank strip in an empty compartment creates its first member.
+attribute and on into the operations without touching the mouse.
+
+Double-clicking the gap just above or below a compartment's members inserts one there
+rather than editing an existing row — before the first, after the last, or the first one
+in an empty compartment. Those gaps are only a few pixels tall, so they tint on hover; the
+slack at the bottom of a box taller than its contents belongs to the last compartment,
+which usually makes it the easiest target on the box.
 
 Members are edited as the exact string the diagram draws:
 

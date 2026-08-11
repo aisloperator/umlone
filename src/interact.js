@@ -107,6 +107,7 @@
         edgeId: edge ? edge.getAttribute('data-edge-id') : null,
         lineKind: line ? line.getAttribute('data-edit-kind') : null,
         lineIndex: line ? parseInt(line.getAttribute('data-edit-index'), 10) || 0 : null,
+        lineInsert: !!line && line.getAttribute('data-edit-insert') === '1',
         waypointEdgeId: waypointIndex === null
           ? null
           : handle.getAttribute('data-edge-id'),
@@ -676,7 +677,8 @@
         inlineEdit.begin({
           nodeId: press.nodeId,
           kind: press.lineKind,
-          index: press.lineIndex
+          index: press.lineIndex,
+          insert: press.lineInsert
         });
         return;
       }

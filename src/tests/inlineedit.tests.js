@@ -74,25 +74,76 @@
     ]);
   });
 
-  T.test('each empty compartment offers a placeholder row to click', function () {
+  T.test('each empty compartment offers a strip to click', function () {
     var doc = ns.testFixture();
     // OrderLine has neither attributes nor operations, so both compartments are empty.
     var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c2');
     var boxes = ns.render.lineBoxes(doc, ns.model.findElement(doc, 'c2'), node);
 
-    var placeholders = boxes.filter(function (b) { return b.placeholder; });
-    T.deepEq(placeholders.map(function (b) { return b.kind; }),
-             ['attribute', 'operation']);
-    T.deepEq(placeholders.map(function (b) { return b.index; }), [0, 0]);
+    var strips = boxes.filter(function (b) { return b.insert; });
+    T.deepEq(strips.map(function (b) { return b.kind; }), ['attribute', 'operation']);
+    T.deepEq(strips.map(function (b) { return b.index; }), [0, 0]);
   });
 
-  T.test('placeholders are not reachable by arrow keys', function () {
+  T.test('a populated compartment has a strip above and below its rows', function () {
+    var doc = ns.testFixture();
+    var element = ns.model.findElement(doc, 'c1');   // one attribute, one operation
+    var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c1');
+    var boxes = ns.render.lineBoxes(doc, element, node);
+
+    var attributeStrips = boxes.filter(function (b) {
+      return b.insert && b.kind === 'attribute';
+    });
+    T.deepEq(attributeStrips.map(function (b) { return b.index; }), [0, 1],
+             'insert-before-first and insert-after-last');
+  });
+
+  T.test('insertion strips never overlap the rows they sit between', function () {
+    var doc = ns.testFixture();
+    var element = ns.model.findElement(doc, 'c1');
+    var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c1');
+    var boxes = ns.render.lineBoxes(doc, element, node);
+
+    boxes.filter(function (b) { return b.insert; }).forEach(function (strip) {
+      boxes.filter(function (b) { return !b.insert; }).forEach(function (row) {
+        var disjoint = strip.y + strip.h <= row.y || row.y + row.h <= strip.y;
+        T.ok(disjoint,
+             'clicking a row must always mean editing it, never inserting beside it');
+      });
+    });
+  });
+
+  T.test('the slack at the bottom of a tall box adds to the last compartment', function () {
+    var doc = ns.testFixture();
+    var element = ns.model.findElement(doc, 'c1');
+    var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c1');
+    node.h = 400;
+
+    var boxes = ns.render.lineBoxes(doc, element, node);
+    var last = boxes[boxes.length - 1];
+
+    T.ok(last.insert, 'the bottom of the box is an insertion target');
+    T.eq(last.kind, 'operation', 'and it belongs to the last compartment');
+    T.eq(last.y + last.h, 400, 'reaching all the way down');
+  });
+
+  T.test('insertion strips are not reachable by arrow keys', function () {
     var doc = ns.testFixture();
     var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c2');
     var slots = ns.render.editSlots(doc, ns.model.findElement(doc, 'c2'), node);
 
     T.deepEq(slots, [{ kind: 'name', index: 0 }],
-             'arrowing into an empty compartment must not create a member');
+             'arrowing through a box must not create members');
+  });
+
+  T.test('the editor lands on a row, never on the strip sharing its index', function () {
+    var doc = ns.testFixture();
+    var element = ns.model.findElement(doc, 'c1');
+    var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c1');
+
+    // The strip above the attributes and the first attribute are both "attribute 0".
+    var box = ns.render.editBox(doc, element, node, { kind: 'attribute', index: 0 });
+    T.eq(box.h, ns.measure.LINE_HEIGHT, 'a full row, not the padding strip');
   });
 
   T.test('the edit box sits over the line it belongs to', function () {
@@ -185,7 +236,7 @@
     s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0 });
 
     s.field().value = '# balance: Decimal [0..1] = 0';
-    press(s.field(), 'Enter');
+    press(s.field(), 'Enter', { shiftKey: true });
 
     var attr = s.element('c1').attributes[0];
     T.eq(attr.visibility, 'protected');
@@ -206,10 +257,10 @@
     T.eq(s.element('c1').attributes.length, 0, 'the attribute is gone');
   });
 
-  T.test('Shift+Enter adds a sibling below and keeps typing', function () {
+  T.test('Enter on a filled row adds another below and keeps typing', function () {
     var s = setup();
     s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0 });
-    press(s.field(), 'Enter', { shiftKey: true });
+    press(s.field(), 'Enter');
 
     T.eq(s.element('c1').attributes.length, 2, 'a new attribute was added');
     T.eq(s.editor.isActive(), true, 'still editing');
@@ -217,24 +268,63 @@
     T.eq(s.field().value, '', 'the new row starts empty');
   });
 
-  T.test('a row added with Shift+Enter can be typed into straight away', function () {
+  T.test('a whole list can be typed without touching the mouse', function () {
     var s = setup();
     s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0 });
+
+    ['+ shippedAt: DateTime', '- notes: String', '# version: int'].forEach(function (text) {
+      press(s.field(), 'Enter');       // open a fresh row below
+      s.field().value = text;
+    });
+    press(s.field(), 'Enter');          // filled row: opens one more
+    press(s.field(), 'Enter');          // that one is empty: finish
+
+    var names = s.element('c1').attributes.map(function (a) { return a.name; });
+    T.deepEq(names, ['total', 'shippedAt', 'notes', 'version']);
+    T.eq(s.editor.isActive(), false, 'the trailing blank row ended the list');
+  });
+
+  T.test('Enter on an empty row finishes and leaves no blank behind', function () {
+    var s = setup();
+    s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0 });
+    press(s.field(), 'Enter');                        // adds a blank row
+    T.eq(s.element('c1').attributes.length, 2);
+
+    press(s.field(), 'Enter');                        // the blank row ends editing
+
+    T.eq(s.element('c1').attributes.length, 1, 'the blank row was tidied away');
+    T.eq(s.editor.isActive(), false);
+  });
+
+  T.test('Shift+Enter stops without adding a row', function () {
+    var s = setup();
+    s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0 });
+
+    s.field().value = '- total: Money';
     press(s.field(), 'Enter', { shiftKey: true });
 
-    s.field().value = '+ shippedAt: DateTime';
-    press(s.field(), 'Enter');
+    T.eq(s.element('c1').attributes.length, 1, 'no sibling was created');
+    T.eq(s.element('c1').attributes[0].name, 'total', 'but the edit was kept');
+    T.eq(s.editor.isActive(), false);
+  });
 
-    var attrs = s.element('c1').attributes;
-    T.eq(attrs.length, 2);
-    T.eq(attrs[1].name, 'shippedAt');
-    T.eq(attrs[1].type, 'DateTime');
+  T.test('Enter builds operations the same way as attributes', function () {
+    var s = setup();
+    s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'operation', index: 0 });
+    press(s.field(), 'Enter');
+    s.field().value = '+ cancel(reason: String): void';
+    press(s.field(), 'Enter', { shiftKey: true });
+
+    var ops = s.element('c1').operations;
+    T.eq(ops.length, 2);
+    T.eq(ops[1].name, 'cancel');
+    T.eq(ops[1].parameters[0].name, 'reason');
   });
 
   T.test('Backspace in an empty row deletes it and moves up', function () {
     var s = setup();
     s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0 });
-    press(s.field(), 'Enter', { shiftKey: true });   // add a blank second row
+    press(s.field(), 'Enter');                        // add a blank second row
     T.eq(s.element('c1').attributes.length, 2);
 
     press(s.field(), 'Backspace');                    // the blank row is already empty
@@ -243,6 +333,44 @@
     T.eq(s.editor.isActive(), true, 'editing continues');
     T.eq(s.editor.editingState().kind, 'attribute');
     T.eq(s.editor.editingState().index, 0, 'caret moved to the row above');
+  });
+
+  // --- inserting by clicking a gap -------------------------------------------
+
+  T.test('the strip above a list inserts a member before the first', function () {
+    var s = setup();
+    s.editor.begin({
+      nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0, insert: true
+    });
+
+    var attrs = s.element('c1').attributes;
+    T.eq(attrs.length, 2, 'a row was created rather than the existing one being edited');
+    T.eq(attrs[1].name, 'total', 'the original attribute moved down');
+    T.eq(s.editor.editingState().index, 0, 'editing the new first row');
+    T.eq(s.field().value, '');
+  });
+
+  T.test('the strip below a list appends after the last', function () {
+    var s = setup();
+    s.editor.begin({
+      nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 1, insert: true
+    });
+
+    s.field().value = '- appended: int';
+    press(s.field(), 'Enter', { shiftKey: true });
+
+    var names = s.element('c1').attributes.map(function (a) { return a.name; });
+    T.deepEq(names, ['total', 'appended']);
+  });
+
+  T.test('an insert past the end of the list is clamped, not dropped', function () {
+    var s = setup();
+    s.editor.begin({
+      nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 99, insert: true
+    });
+
+    T.eq(s.element('c1').attributes.length, 2);
+    T.eq(s.editor.editingState().index, 1, 'appended at the end');
   });
 
   T.test('Backspace in a non-empty row is ordinary text deletion', function () {
@@ -367,7 +495,7 @@
 
     T.eq(s.field().value, 'SHIPPED');
     s.field().value = 'DELIVERED';
-    press(s.field(), 'Enter');
+    press(s.field(), 'Enter', { shiftKey: true });
     T.deepEq(s.element('n1').literals, ['OPEN', 'DELIVERED']);
   });
 
@@ -397,10 +525,10 @@
     // Fill the box past its height.
     s.editor.begin({ nodeId: nodeId, kind: 'attribute', index: 0 });
     for (var i = 0; i < 8; i++) {
-      press(s.field(), 'Enter', { shiftKey: true });
+      press(s.field(), 'Enter');
       s.field().value = '- filler' + i + ': int';
     }
-    press(s.field(), 'Enter');
+    press(s.field(), 'Enter', { shiftKey: true });
 
     var after = ns.diagram.findNode(s.store.currentDiagram(), nodeId).h;
     T.ok(after > before, 'the box should have grown to fit the new rows');
@@ -439,7 +567,7 @@
     T.eq(s.field().value, '');
 
     s.field().value = 'CANCELLED';
-    press(s.field(), 'Enter');
+    press(s.field(), 'Enter', { shiftKey: true });
     T.deepEq(s.element('n1').literals, ['OPEN', 'SHIPPED', 'CANCELLED']);
   });
 
@@ -464,11 +592,11 @@
 
     s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0 });
     s.field().value = '# balance: Decimal [0..1] = 0';
-    press(s.field(), 'Enter');
+    press(s.field(), 'Enter', { shiftKey: true });
 
     s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'operation', index: 0 });
     s.field().value = '+ apply(policy: TaxPolicy, out ok: bool): Money';
-    press(s.field(), 'Enter');
+    press(s.field(), 'Enter', { shiftKey: true });
 
     var text = ns.io.serialize(s.store.doc);
     T.eq(ns.io.serialize(ns.io.deserialize(text).doc), text,
@@ -484,7 +612,7 @@
     s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'attribute', index: 0 });
     s.field().value = '+ x: int';
     press(s.field(), 'ArrowDown');
-    press(s.field(), 'Enter');
+    press(s.field(), 'Enter', { shiftKey: true });
 
     var result = ns.validate.normalizeDocument(s.store.doc);
     T.deepEq(result.errors, []);

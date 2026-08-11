@@ -209,9 +209,12 @@
         evt.preventDefault();
         evt.stopPropagation();
 
-        // Shift+Enter on a member row adds a sibling below and keeps typing, which is how
-        // a list gets built without reaching for the mouse.
-        if (isMember && evt.shiftKey) {
+        // Enter on a member row adds another below and keeps typing, so a list is built
+        // by typing straight down it. Enter on a row that is still empty finishes
+        // instead: committing empty deletes the blank row, so the last Enter both ends
+        // the list and tidies up after itself. That is how a bulleted list behaves in
+        // every editor, and it leaves Shift+Enter as the explicit "stop here".
+        if (isMember && !evt.shiftKey && session.input.value.trim() !== '') {
           insertSibling();
         } else {
           commit();
@@ -278,7 +281,9 @@
 
     // --- opening and closing -------------------------------------------------
 
-    // `target` is { nodeId, kind, index }, optionally with caret: 'end' | 'all'.
+    // `target` is { nodeId, kind, index }, optionally with:
+    //   insert: true    create a member at `index` first, then edit it
+    //   caret: 'end'    put the caret at the end instead of selecting everything
     function begin(target) {
       closeSilently();
 
@@ -288,16 +293,18 @@
       var index = target.index || 0;
       var listName = listNameFor(target.kind);
 
-      // Clicking the placeholder row of an empty compartment, or arriving past the end of
-      // a list, means "make one here".
       if (listName) {
         var list = found.element[listName];
         if (!list) { return false; }
-        // Bounds, not truthiness — an existing but still-empty literal is a valid row.
-        if (index >= list.length) {
-          index = list.length;
-          var created = insertBlank(found.element.id, target.kind, index, found.node.id);
-          if (!created) { return false; }
+
+        // Either the caller asked for a new member here (an insertion strip was clicked),
+        // or the index is past the end. Bounds, not truthiness — an existing but still
+        // empty literal is a valid row that must be edited, not duplicated.
+        if (target.insert || index >= list.length) {
+          index = Math.max(0, Math.min(index, list.length));
+          if (!insertBlank(found.element.id, target.kind, index, found.node.id)) {
+            return false;
+          }
           found = resolve(target.nodeId);
           if (!found) { return false; }
         }
