@@ -374,11 +374,17 @@ select, input[type="text"], input[type="number"], textarea {
 
 /* One transparent row per editable line, sitting above the text. Glyph-only hit-testing
    would leave the gap after a short attribute name unclickable, which is not how a line
-   of text is expected to behave. */
+   of text is expected to behave.
+
+   No cursor of its own, deliberately. An I-beam here would promise that clicking starts
+   typing, when a single click selects the box and begins a drag — typing needs a
+   double-click. Leaving it unset also lets the canvas cursor through, so the palette
+   tools keep their crosshair and copy cursors over a box's text rather than being
+   overridden by it. The text cursor appears where it is true: inside the field itself,
+   once one is open. */
 .line-hit {
   fill: transparent;
   pointer-events: all;
-  cursor: text;
 }
 
 /* The gaps above and below a compartment's members, where a double-click adds one.
