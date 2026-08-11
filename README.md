@@ -66,8 +66,9 @@ and you can put it back from the inspector's *Not on this diagram* list.
 
 ## Editing text on the diagram
 
-Double-click any line of text in a box to edit it where it sits. Placing a new element
-opens the same field immediately, so creating a class and naming it is one gesture.
+**Double**-click any line of text in a box to edit it where it sits — a single click
+selects the box and starts a drag, as it does anywhere else on it. Placing a new element
+opens the field immediately, so creating a class and naming it is one gesture.
 
 | Key | Effect |
 | --- | --- |
@@ -114,6 +115,14 @@ real HTML `<input>` over the line being edited, using the same rectangle the ren
 to draw it (`render.lineBoxes`). Caret, selection, double-click-to-select-word, clipboard,
 and IME are then simply the browser's, none of which would be free inside SVG. The line
 underneath is skipped while its field is open, so the text never shows through.
+
+Double-clicks are recognised in `interact.js` at `pointerdown` rather than left to the
+browser's `dblclick` event. Drawing is a full rebuild — every render calls
+`ns.clear(svg)` — and selecting a node redraws, as does releasing the pointer, so across a
+double-click the element under the cursor is destroyed and replaced four times. `dblclick`
+only fires when both clicks share a target, and Firefox holds to that strictly, so the
+event never arrived at all. Reading the target during `pointerdown`, before anything can
+redraw, does not depend on the browser's click bookkeeping surviving a rebuild.
 
 ## File format
 

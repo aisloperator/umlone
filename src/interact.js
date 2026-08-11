@@ -16,6 +16,33 @@
   var MIN_SCALE = 0.2;
   var MAX_SCALE = 4;
 
+  // Double-clicks are recognised here rather than left to the browser's `dblclick`.
+  //
+  // Drawing is a full rebuild: every render calls ns.clear(svg) and recreates every
+  // element. Selecting a node redraws, and so does releasing the pointer, so across a
+  // double-click the element under the cursor is destroyed and replaced four times. A
+  // `dblclick` event only fires when both clicks share a target, and Firefox holds to
+  // that strictly — so the event never arrived and double-clicking did nothing at all.
+  //
+  // Reading the target during pointerdown, before anything redraws, sidesteps the whole
+  // problem and does not depend on the browser's click bookkeeping surviving a rebuild.
+  var DOUBLE_CLICK_MS = 450;
+  var DOUBLE_CLICK_SLOP = 6;
+
+  // Pure, and module-level so it can be tested directly.
+  //
+  // No separate "the pointer moved, cancel the pair" bookkeeping is needed: a drag ends
+  // with the pointer somewhere else, so the next press fails the distance check by
+  // itself. A drag that stayed within the slop is not distinguishable from a click.
+  function isDoublePress(previous, current) {
+    return !!previous &&
+           current.time - previous.time <= DOUBLE_CLICK_MS &&
+           Math.abs(current.x - previous.x) <= DOUBLE_CLICK_SLOP &&
+           Math.abs(current.y - previous.y) <= DOUBLE_CLICK_SLOP &&
+           previous.nodeId === current.nodeId &&
+           previous.edgeId === current.edgeId;
+  }
+
   function create(options) {
     var svg = options.svg;
     var host = options.host;
@@ -45,6 +72,47 @@
     };
 
     var gesture = null;
+    var lastPress = null;
+    var handledDoubleAt = 0;
+
+    // --- press identity ------------------------------------------------------
+
+    // Everything about a press that matters for recognising a double-click and for
+    // deciding what it should do. Captured at pointerdown, while the DOM the user
+    // actually clicked still exists.
+    function pressSignature(evt) {
+      function pick(selector) {
+        return evt.target.closest ? evt.target.closest(selector) : null;
+      }
+
+      var line = pick('.line-hit');
+      var node = pick('.node');
+      var edge = pick('.edge');
+      var handle = pick('.handle');
+
+      // Resize handles live in the overlay layer rather than inside the node group, so
+      // their node id has to come from the handle itself. Without this, the second click
+      // of a double-click landing on a handle — which only appears once the first click
+      // selected the box — would look like a click on something else entirely.
+      var nodeId = node ? node.getAttribute('data-node-id')
+                        : (handle ? handle.getAttribute('data-node-id') : null);
+
+      var waypointIndex = handle ? handle.getAttribute('data-waypoint-index') : null;
+
+      return {
+        time: Date.now(),
+        x: evt.clientX,
+        y: evt.clientY,
+        nodeId: nodeId || null,
+        edgeId: edge ? edge.getAttribute('data-edge-id') : null,
+        lineKind: line ? line.getAttribute('data-edit-kind') : null,
+        lineIndex: line ? parseInt(line.getAttribute('data-edit-index'), 10) || 0 : null,
+        waypointEdgeId: waypointIndex === null
+          ? null
+          : handle.getAttribute('data-edge-id'),
+        waypointIndex: waypointIndex === null ? null : parseInt(waypointIndex, 10)
+      };
+    }
 
     // --- coordinates ---------------------------------------------------------
 
@@ -253,17 +321,30 @@
       var diagram = store.currentDiagram();
       if (!diagram) { return; }
 
+      // Read what was pressed before anything can redraw and replace it.
+      var press = pressSignature(evt);
+      var doubled = isDoublePress(lastPress, press);
+      // A third click in the same spot starts a fresh pair rather than counting again.
+      lastPress = doubled ? null : press;
+
       // Clicking the canvas while a field is open commits it, the same as clicking away
       // from any text box.
       commitInlineEdit();
 
-      svg.setPointerCapture(evt.pointerId);
-
       // Middle button, or Ctrl/Cmd with the select tool, pans.
       if (evt.button === 1 || (evt.ctrlKey || evt.metaKey)) {
+        svg.setPointerCapture(evt.pointerId);
         beginPan(evt);
         return;
       }
+
+      if (doubled && state.tool.type === 'select') {
+        evt.preventDefault();
+        performDoubleAction(press, evt);
+        return;
+      }
+
+      svg.setPointerCapture(evt.pointerId);
 
       var handle = evt.target.closest ? evt.target.closest('.handle') : null;
       var nodeGroup = evt.target.closest ? evt.target.closest('.node') : null;
@@ -568,52 +649,58 @@
 
     // --- double click --------------------------------------------------------
 
-    function onDoubleClick(evt) {
+    // What a double-click means, given what was under it. Driven from the synthesized
+    // detection in onPointerDown, and from the native `dblclick` on browsers where that
+    // still arrives.
+    function performDoubleAction(press, evt) {
       var diagram = store.currentDiagram();
       if (!diagram) { return; }
 
-      var handle = evt.target.closest ? evt.target.closest('.handle') : null;
-      if (handle && handle.getAttribute('data-waypoint-index') !== null) {
-        removeWaypoint(handle.getAttribute('data-edge-id'),
-                       parseInt(handle.getAttribute('data-waypoint-index'), 10));
+      handledDoubleAt = Date.now();
+
+      if (press.waypointIndex !== null) {
+        removeWaypoint(press.waypointEdgeId, press.waypointIndex);
         return;
       }
 
-      var edgeGroup = evt.target.closest ? evt.target.closest('.edge') : null;
-      if (edgeGroup) {
-        insertWaypoint(edgeGroup.getAttribute('data-edge-id'), toDiagram(evt), evt);
+      if (press.edgeId && !press.nodeId) {
+        insertWaypoint(press.edgeId, toDiagram(evt), evt);
         return;
       }
 
-      var nodeGroup = evt.target.closest ? evt.target.closest('.node') : null;
-      if (!nodeGroup || !inlineEdit) { return; }
-
-      var nodeId = nodeGroup.getAttribute('data-node-id');
+      if (!press.nodeId || !inlineEdit) { return; }
 
       // The renderer stamps every editable line with its kind and index, so the row that
       // was double-clicked is known exactly rather than worked out from the y coordinate.
-      var lineHit = evt.target.closest ? evt.target.closest('.line-hit') : null;
-      if (lineHit) {
-        evt.preventDefault();
+      if (press.lineKind) {
         inlineEdit.begin({
-          nodeId: nodeId,
-          kind: lineHit.getAttribute('data-edit-kind'),
-          index: parseInt(lineHit.getAttribute('data-edit-index'), 10) || 0
+          nodeId: press.nodeId,
+          kind: press.lineKind,
+          index: press.lineIndex
         });
         return;
       }
 
       // Double-clicking anywhere else on a box edits whatever names it.
-      var node = ns.diagram.findNode(diagram, nodeId);
+      var node = ns.diagram.findNode(diagram, press.nodeId);
       var element = node ? ns.model.findElement(store.doc, node.ref) : null;
       if (!element) { return; }
 
-      evt.preventDefault();
       inlineEdit.begin({
-        nodeId: nodeId,
+        nodeId: press.nodeId,
         kind: element.kind === 'comment' ? 'body' : 'name',
         index: 0
       });
+    }
+
+    // Kept as a fallback for browsers where `dblclick` does survive the redraw. The
+    // synthesized path runs first, on the second pointerdown, so this usually finds the
+    // work already done.
+    function onDoubleClick(evt) {
+      if (Date.now() - handledDoubleAt < DOUBLE_CLICK_MS) { return; }
+      if (state.tool.type !== 'select') { return; }
+      evt.preventDefault();
+      performDoubleAction(pressSignature(evt), evt);
     }
 
     function insertWaypoint(edgeId, point, evt) {
@@ -858,5 +945,11 @@
     };
   }
 
-  ns.interact = { create: create, GRID: GRID };
+  ns.interact = {
+    create: create,
+    GRID: GRID,
+    DOUBLE_CLICK_MS: DOUBLE_CLICK_MS,
+    DOUBLE_CLICK_SLOP: DOUBLE_CLICK_SLOP,
+    isDoublePress: isDoublePress
+  };
 })(UMLOne);
