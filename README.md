@@ -90,9 +90,15 @@ attribute and on into the operations without touching the mouse.
 
 Double-clicking the gap just above or below a compartment's members inserts one there
 rather than editing an existing row — before the first, after the last, or the first one
-in an empty compartment. Those gaps are only a few pixels tall, so they tint on hover; the
-slack at the bottom of a box taller than its contents belongs to the last compartment,
-which usually makes it the easiest target on the box.
+in an empty compartment. Those gaps are only a few pixels tall, so they tint on hover, and
+the one below the last member borrows a little of the empty space beneath it. That borrow
+is capped at a single row: a strip covering all the slack in a tall box would light up on
+hover and read as a member that is already there.
+
+A box grows when a new row would not fit. Since building a list means inserting a blank
+row on every Enter, and the last of those is thrown away when the list ends, the box hands
+that height back when editing stops — down to what the contents need, but never below the
+height the box had when editing began. A size set by dragging stays yours.
 
 Members are edited as the exact string the diagram draws:
 
@@ -111,9 +117,6 @@ worse than storing something odd. Two properties they guarantee:
   edited line cannot express, so they are carried over from the member being replaced
   rather than read from the text. The same goes for the member's id, so editing a row
   modifies it rather than replacing it.
-
-A box grows automatically when a new row would not fit, but never shrinks on its own — a
-size you chose by dragging is yours to keep.
 
 Notes are the exception to the Enter rule: their text is genuinely multi-line, so
 Shift+Enter inserts a line break there and the arrow keys move the caret.

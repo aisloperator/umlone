@@ -31,6 +31,15 @@
 
     var session = null;
 
+    // Remembers how tall a box was before editing started growing it. Building a list
+    // inserts a blank row on every Enter and grows the box to fit it; the last of those
+    // rows is thrown away when the list ends, and without this the box would keep its
+    // height and be left with a row-sized gap at the bottom.
+    //
+    // It survives navigation between rows of the same box — those close and reopen the
+    // field — and settles only when editing that box really stops.
+    var growth = null;
+
     function isActive() {
       return !!session;
     }
@@ -98,6 +107,31 @@
       var size = ns.render.preferredSize(doc, element, node);
       if (size.w > node.w) { node.w = size.w; }
       if (size.h > node.h) { node.h = size.h; }
+    }
+
+    // Hands back height that editing added and no longer needs. Never goes below what the
+    // content requires, and never below the height the box had when editing began — a
+    // size set by dragging is still the user's, and is not ours to take away.
+    function settleGrowth() {
+      var pending = growth;
+      growth = null;
+      if (!pending) { return; }
+
+      store.apply('tidy height', function (doc) {
+        var diagram = ns.diagram.findDiagram(doc, store.currentDiagramId);
+        var node = diagram && ns.diagram.findNode(diagram, pending.nodeId);
+        if (!node) { return false; }
+
+        var element = ns.model.findElement(doc, node.ref);
+        if (!element) { return false; }
+
+        var target = Math.max(ns.render.preferredSize(doc, element, node).h,
+                              pending.floorHeight);
+        if (node.h <= target) { return false; }
+
+        node.h = target;
+        return true;
+      });
     }
 
     // --- committing ----------------------------------------------------------
@@ -285,10 +319,24 @@
     //   insert: true    create a member at `index` first, then edit it
     //   caret: 'end'    put the caret at the end instead of selecting everything
     function begin(target) {
-      closeSilently();
+      // Keep whatever is in an open field rather than dropping it. Navigation between
+      // rows has already closed its own field by this point, so this only fires when
+      // editing jumps somewhere new — and there, discarding would lose typing the user
+      // has no reason to think is at risk.
+      commit();
 
       var found = resolve(target.nodeId);
       if (!found) { return false; }
+
+      // Moving to a different box settles the one being left before adopting a new floor.
+      if (growth && growth.nodeId !== found.node.id) {
+        settleGrowth();
+        found = resolve(target.nodeId);
+        if (!found) { return false; }
+      }
+      if (!growth) {
+        growth = { nodeId: found.node.id, floorHeight: found.node.h };
+      }
 
       var index = target.index || 0;
       var listName = listNameFor(target.kind);
@@ -390,8 +438,11 @@
       session = null;
     }
 
+    // Ends editing for real, as opposed to closeSilently(), which navigation uses to swap
+    // one row's field for the next without the box settling in between.
     function close() {
       closeSilently();
+      settleGrowth();
       onRender();
     }
 

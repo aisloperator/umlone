@@ -113,18 +113,34 @@
     });
   });
 
-  T.test('the slack at the bottom of a tall box adds to the last compartment', function () {
+  T.test('the strip below the last row is one row tall, not the whole slack', function () {
     var doc = ns.testFixture();
     var element = ns.model.findElement(doc, 'c1');
     var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c1');
-    node.h = 400;
+    node.h = 400;   // far taller than its contents
 
     var boxes = ns.render.lineBoxes(doc, element, node);
     var last = boxes[boxes.length - 1];
 
-    T.ok(last.insert, 'the bottom of the box is an insertion target');
-    T.eq(last.kind, 'operation', 'and it belongs to the last compartment');
-    T.eq(last.y + last.h, 400, 'reaching all the way down');
+    T.ok(last.insert, 'there is still a target below the last member');
+    T.eq(last.kind, 'operation', 'belonging to the last compartment');
+    T.ok(last.h <= ns.measure.PAD_Y + ns.measure.LINE_HEIGHT,
+         'capped at one row — a strip covering the whole slack would highlight on ' +
+         'hover and read as a member that is already there');
+    T.ok(last.y + last.h < 400, 'the rest of the box is left alone');
+  });
+
+  T.test('a short box still gets a usable strip below its last row', function () {
+    var doc = ns.testFixture();
+    var element = ns.model.findElement(doc, 'c1');
+    var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c1');
+    node.h = ns.render.preferredSize(doc, element, node).h;   // no slack at all
+
+    var boxes = ns.render.lineBoxes(doc, element, node);
+    var last = boxes[boxes.length - 1];
+
+    T.ok(last.insert);
+    T.ok(last.h > 0, 'the padding below the last row is always a target');
   });
 
   T.test('insertion strips are not reachable by arrow keys', function () {
@@ -532,6 +548,88 @@
 
     var after = ns.diagram.findNode(s.store.currentDiagram(), nodeId).h;
     T.ok(after > before, 'the box should have grown to fit the new rows');
+  });
+
+  // Reported: after typing two operations and pressing Enter to finish, the box was left
+  // with a row-sized gap at the bottom where a third operation would be — but no third
+  // operation existed. Each Enter had inserted a blank row and grown the box to fit it,
+  // and the final Enter deleted that blank row without the height coming back.
+  T.test('finishing a list gives back the height its blank row borrowed', function () {
+    var s = setup();
+    var nodeId = s.nodeIdFor('c2');   // OrderLine: no members yet
+    var startHeight = ns.diagram.findNode(s.store.currentDiagram(), nodeId).h;
+
+    s.editor.begin({ nodeId: nodeId, kind: 'operation', index: 0, insert: true });
+    s.field().value = '+ subtotal(): Money';
+    press(s.field(), 'Enter');                       // commit, open a blank row
+    s.field().value = '+ tax(): Money';
+    press(s.field(), 'Enter');                       // commit, open another blank row
+    press(s.field(), 'Enter');                       // blank row: finish
+
+    var element = s.element('c2');
+    T.eq(element.operations.length, 2, 'exactly the two that were typed');
+
+    var node = ns.diagram.findNode(s.store.currentDiagram(), nodeId);
+    var needed = ns.render.preferredSize(s.store.doc, element, node).h;
+
+    T.ok(node.h < startHeight + ns.measure.LINE_HEIGHT,
+         'the box must not keep the deleted row\'s height');
+    T.ok(node.h >= needed, 'and must still fit what is actually there');
+  });
+
+  T.test('settling never goes below the height the box had when editing began', function () {
+    var s = setup();
+    var nodeId = s.nodeIdFor('c1');
+
+    s.store.apply('enlarge', function (doc) {
+      ns.diagram.findNode(doc.diagrams[0], nodeId).h = 400;
+      return true;
+    });
+
+    s.editor.begin({ nodeId: nodeId, kind: 'attribute', index: 0 });
+    press(s.field(), 'Enter');            // grows nothing; there is plenty of room
+    press(s.field(), 'Enter');            // blank row: finish
+
+    T.eq(ns.diagram.findNode(s.store.currentDiagram(), nodeId).h, 400,
+         'a size set by dragging is not ours to take away');
+  });
+
+  T.test('settling leaves genuine growth in place', function () {
+    var s = setup();
+    var nodeId = s.nodeIdFor('c2');
+    var startHeight = ns.diagram.findNode(s.store.currentDiagram(), nodeId).h;
+
+    s.editor.begin({ nodeId: nodeId, kind: 'attribute', index: 0, insert: true });
+    for (var i = 0; i < 10; i++) {
+      s.field().value = '- filler' + i + ': int';
+      press(s.field(), 'Enter');
+    }
+    press(s.field(), 'Enter');            // blank row: finish
+
+    var node = ns.diagram.findNode(s.store.currentDiagram(), nodeId);
+    var needed = ns.render.preferredSize(s.store.doc, s.element('c2'), node).h;
+
+    T.eq(s.element('c2').attributes.length, 10);
+    T.ok(node.h > startHeight, 'ten attributes need a taller box than we started with');
+    T.ok(node.h >= needed, 'and all of them are visible');
+  });
+
+  T.test('moving to another box settles the one being left', function () {
+    var s = setup();
+    var first = s.nodeIdFor('c2');
+    var firstStart = ns.diagram.findNode(s.store.currentDiagram(), first).h;
+
+    s.editor.begin({ nodeId: first, kind: 'operation', index: 0, insert: true });
+    s.field().value = '+ only(): void';
+    press(s.field(), 'Enter');                       // opens a blank row, grows the box
+
+    // Click into a different box without finishing the first.
+    s.editor.begin({ nodeId: s.nodeIdFor('c1'), kind: 'name', index: 0 });
+
+    var node = ns.diagram.findNode(s.store.currentDiagram(), first);
+    T.eq(s.element('c2').operations.length, 1, 'the blank row went with the field');
+    T.ok(node.h < firstStart + ns.measure.LINE_HEIGHT * 2,
+         'and the box it left is not stuck at the borrowed height');
   });
 
   T.test('a box never shrinks on its own', function () {

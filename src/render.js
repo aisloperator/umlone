@@ -222,17 +222,25 @@
       var height = bandHeight(band);
       var isLast = bandIndex === lastBand;
 
-      // `extend` hands the slack at the bottom of an over-tall box to the last
-      // compartment. That slack is usually the largest clickable area on the box, which
-      // makes "add another member here" easy to find rather than a 6px sliver.
+      // `extend` borrows some of the empty space below the last member so the target is
+      // not a 6px sliver. It is capped at a single row: the strip highlights on hover,
+      // and one covering all the slack in a tall box reads as a member that is already
+      // there, which is exactly the wrong thing for it to say. One row tall, sitting
+      // where the next member would appear, is the honest size.
       function insertStrip(index, stripY, stripH, extend) {
+        var height = stripH;
+        if (extend && isLast) {
+          var slack = Math.max(0, node.h - (stripY + stripH));
+          height = stripH + Math.min(slack, LINE_H);
+        }
+
         boxes.push({
           kind: band.editKind,
           index: index,
           x: 0,
           y: stripY,
           w: width,
-          h: (extend && isLast) ? Math.max(stripH, node.h - stripY) : stripH,
+          h: height,
           font: 'member',
           align: 'start',
           insert: true
