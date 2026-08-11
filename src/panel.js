@@ -109,7 +109,6 @@
       var input = textInput(element.name, function (value) {
         editElement(element.id, 'rename', function (el) { el.name = value; });
       });
-      input.setAttribute('data-role', 'primary-input');
       field(parent, 'Name', input);
     }
 
@@ -350,7 +349,6 @@
       area.addEventListener('change', function () {
         editElement(element.id, 'edit note', function (el) { el.body = area.value; });
       });
-      area.setAttribute('data-role', 'primary-input');
       field(parent, 'Text', area);
     }
 
@@ -498,7 +496,6 @@
       var nameInput = textInput(rel.name, function (v) {
         editRelationship(rel.id, 'relationship name', function (r) { r.name = v; });
       });
-      nameInput.setAttribute('data-role', 'primary-input');
       field(container, 'Label', nameInput);
 
       var swapRow = ns.html('div', { 'class': 'row' }, container);
@@ -622,17 +619,7 @@
       }
     }
 
-    // Called after double-click, and after creating an element, so the user can type a
-    // name straight away instead of hunting for the field.
-    function focusPrimaryInput() {
-      var input = container.querySelector('[data-role="primary-input"]');
-      if (input) {
-        input.focus();
-        if (input.select) { input.select(); }
-      }
-    }
-
-    return { render: render, focusPrimaryInput: focusPrimaryInput };
+    return { render: render };
   }
 
   ns.panel = { create: create };

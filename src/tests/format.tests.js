@@ -26,8 +26,11 @@
     ns.model.addElement(doc, ns.model.createElement('class', {
       id: 'c2', name: 'OrderLine', owner: 'p1'
     }));
-    ns.model.addElement(doc, ns.model.createElement('interface', {
+    var payable = ns.model.addElement(doc, ns.model.createElement('interface', {
       id: 'i1', name: 'Payable'
+    }));
+    payable.operations.push(ns.model.createOperation({
+      id: 'o2', name: 'amountDue', returnType: 'Money'
     }));
     ns.model.addElement(doc, ns.model.createElement('enumeration', {
       id: 'n1', name: 'Status', literals: ['OPEN', 'SHIPPED']

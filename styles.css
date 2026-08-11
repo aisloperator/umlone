@@ -369,3 +369,44 @@ select, input[type="text"], input[type="number"], textarea {
 }
 
 .edge-source-hint .node-shape { stroke: var(--selected); stroke-width: 2; }
+
+/* --- in-place text editing ------------------------------------------------ */
+
+/* One transparent row per editable line, sitting above the text. Glyph-only hit-testing
+   would leave the gap after a short attribute name unclickable, which is not how a line
+   of text is expected to behave. */
+.line-hit {
+  fill: transparent;
+  pointer-events: all;
+  cursor: text;
+}
+
+/* A real HTML input positioned over the line it is editing — not SVG text, and not a
+   foreignObject. That is what makes the caret, selection, clipboard, and IME behave
+   exactly as they do in any other text field. */
+.inline-editor {
+  position: absolute;
+  z-index: 5;
+  margin: 0;
+  padding: 0 3px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font-family: var(--diagram-font);
+  line-height: 1.15;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  outline: none;
+  resize: none;
+  overflow: hidden;
+}
+
+/* A note is the one field whose content is genuinely multi-line, so it wraps and scrolls
+   rather than clipping. */
+textarea.inline-editor {
+  overflow: auto;
+  white-space: pre-wrap;
+  padding: 4px 5px;
+}
+
+.inline-editor::selection { background: var(--accent-soft); }

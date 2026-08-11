@@ -283,6 +283,186 @@
     return '«' + stereotypes.join(', ') + '»';
   }
 
+  // --- parsing ---------------------------------------------------------------
+  //
+  // The inverse of the format* functions above. In-place editing shows a member as the
+  // exact string the diagram draws, so committing has to read that string back. These
+  // must round-trip: format(parse(format(x))) === format(x).
+  //
+  // They never fail. Unparseable input falls back to treating the whole string as the
+  // name, because losing what someone typed is worse than storing something odd.
+  //
+  // Static and abstract are carried over from the member being replaced rather than read
+  // from the text: they render as underline and italic, which are not expressible in the
+  // one line being edited.
+
+  var VISIBILITY_BY_SYMBOL = {
+    '+': 'public',
+    '#': 'protected',
+    '-': 'private',
+    '~': 'package'
+  };
+
+  // Splits on a separator that appears outside brackets, so generic types such as
+  // Map<String, Integer> survive being used as a parameter type.
+  function splitTopLevel(text, separator) {
+    var parts = [];
+    var current = '';
+    var depth = 0;
+
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (ch === '(' || ch === '<' || ch === '[') { depth++; }
+      else if (ch === ')' || ch === '>' || ch === ']') { depth--; }
+
+      if (ch === separator && depth <= 0) {
+        parts.push(current);
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    parts.push(current);
+
+    return parts
+      .map(function (part) { return part.trim(); })
+      .filter(function (part) { return part.length > 0; });
+  }
+
+  function takeVisibility(text, fallback) {
+    var trimmed = text.trim();
+    var symbol = trimmed.charAt(0);
+    if (VISIBILITY_BY_SYMBOL[symbol]) {
+      return { visibility: VISIBILITY_BY_SYMBOL[symbol], rest: trimmed.slice(1).trim() };
+    }
+    return { visibility: fallback, rest: trimmed };
+  }
+
+  function parseAttribute(text, existing) {
+    var base = existing || createAttribute();
+    var taken = takeVisibility(String(text), base.visibility);
+    var rest = taken.rest;
+
+    var attr = {
+      id: base.id,
+      name: '',
+      type: '',
+      visibility: taken.visibility,
+      multiplicity: '',
+      defaultValue: '',
+      isStatic: base.isStatic,
+      isDerived: false
+    };
+
+    if (rest.charAt(0) === '/') {
+      attr.isDerived = true;
+      rest = rest.slice(1).trim();
+    }
+
+    var equals = rest.indexOf('=');
+    if (equals >= 0) {
+      attr.defaultValue = rest.slice(equals + 1).trim();
+      rest = rest.slice(0, equals).trim();
+    }
+
+    var multiplicity = rest.match(/\[([^\[\]]*)\]\s*$/);
+    if (multiplicity) {
+      var value = multiplicity[1].trim();
+      // A bracketed group that is not a multiplicity is more likely part of the type —
+      // `String[]` is an array, not a multiplicity of nothing — so leave it where it is.
+      // The emptiness check matters: isValidMultiplicity('') is true, because an absent
+      // multiplicity is legal.
+      if (value && isValidMultiplicity(value)) {
+        attr.multiplicity = value;
+        rest = rest.slice(0, multiplicity.index).trim();
+      }
+    }
+
+    var colon = rest.indexOf(':');
+    if (colon >= 0) {
+      attr.name = rest.slice(0, colon).trim();
+      attr.type = rest.slice(colon + 1).trim();
+    } else {
+      attr.name = rest.trim();
+    }
+
+    return attr;
+  }
+
+  function parseParameter(text) {
+    var param = { name: '', type: '', direction: 'in' };
+    var rest = String(text).trim();
+
+    var direction = rest.match(/^(inout|in|out|return)\s+/);
+    if (direction) {
+      param.direction = direction[1];
+      rest = rest.slice(direction[0].length).trim();
+    }
+
+    var colon = rest.indexOf(':');
+    if (colon >= 0) {
+      param.name = rest.slice(0, colon).trim();
+      param.type = rest.slice(colon + 1).trim();
+    } else {
+      param.name = rest;
+    }
+
+    return param;
+  }
+
+  function parseOperation(text, existing) {
+    var base = existing || createOperation();
+    var taken = takeVisibility(String(text), base.visibility);
+    var rest = taken.rest;
+
+    var op = {
+      id: base.id,
+      name: '',
+      returnType: '',
+      visibility: taken.visibility,
+      isStatic: base.isStatic,
+      isAbstract: base.isAbstract,
+      parameters: []
+    };
+
+    var open = rest.indexOf('(');
+    var close = rest.lastIndexOf(')');
+
+    if (open >= 0 && close > open) {
+      op.name = rest.slice(0, open).trim();
+      var inner = rest.slice(open + 1, close).trim();
+      if (inner) {
+        op.parameters = splitTopLevel(inner, ',').map(parseParameter);
+      }
+      var after = rest.slice(close + 1).trim();
+      if (after.charAt(0) === ':') {
+        op.returnType = after.slice(1).trim();
+      }
+    } else {
+      // No parentheses typed yet — still an operation, just an incomplete one.
+      var colon = rest.indexOf(':');
+      if (colon >= 0) {
+        op.name = rest.slice(0, colon).trim();
+        op.returnType = rest.slice(colon + 1).trim();
+      } else {
+        op.name = rest.trim();
+      }
+    }
+
+    return op;
+  }
+
+  // True when a member holds nothing the user typed. New rows start this way, and an
+  // editor showing "+ ()" for a blank operation would be something to delete before
+  // typing rather than a place to start.
+  function isBlankAttribute(attr) {
+    return !attr.name && !attr.type && !attr.defaultValue && !attr.multiplicity;
+  }
+
+  function isBlankOperation(op) {
+    return !op.name && !op.returnType && !(op.parameters && op.parameters.length);
+  }
+
   // What to show for an element in lists, tooltips, and the inspector heading.
   function displayName(element) {
     if (!element) { return '(missing)'; }
@@ -321,6 +501,14 @@
     removeElement: removeElement,
     removeRelationship: removeRelationship,
     canOwn: canOwn,
+
+    VISIBILITY_BY_SYMBOL: VISIBILITY_BY_SYMBOL,
+    splitTopLevel: splitTopLevel,
+    parseAttribute: parseAttribute,
+    parseOperation: parseOperation,
+    parseParameter: parseParameter,
+    isBlankAttribute: isBlankAttribute,
+    isBlankOperation: isBlankOperation,
 
     visibilitySymbol: visibilitySymbol,
     formatAttribute: formatAttribute,

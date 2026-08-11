@@ -48,7 +48,7 @@ repairs happened, with details in the browser console.
 | Create relationship | Pick a relationship tool, click the source, then the target |
 | Add a bend to a line | Double-click the line |
 | Remove a bend | Double-click the bend handle |
-| Rename | Double-click a box, or edit in the inspector |
+| Edit text on the diagram | Double-click a name, attribute, operation, literal, or note |
 | Precise placement | Hold Alt while dragging to bypass the 5px grid |
 | Nudge | Arrow keys; Shift+Arrow for a larger step |
 | Pan | Middle-drag, or Ctrl/Cmd-drag, or scroll |
@@ -63,6 +63,57 @@ repairs happened, with details in the browser console.
 from the model, so it disappears from every diagram along with its relationships.
 Shift+Delete removes only the view — the element stays in the model and on other diagrams,
 and you can put it back from the inspector's *Not on this diagram* list.
+
+## Editing text on the diagram
+
+Double-click any line of text in a box to edit it where it sits. Placing a new element
+opens the same field immediately, so creating a class and naming it is one gesture.
+
+| Key | Effect |
+| --- | --- |
+| Enter | Commit and stop editing |
+| Escape | Discard the edit |
+| Shift+Enter | Commit, add another row below, and keep typing |
+| ↑ / ↓ | Commit and move to the row above/below |
+| Tab / Shift+Tab | Same as ↓ / ↑ |
+| Backspace in an empty row | Delete the row and move up |
+
+Arrow keys cross compartment boundaries, so ↓ walks from the class name through every
+attribute and on into the operations without touching the mouse. Committing an empty row
+deletes that member — that plus Backspace is how members are removed from the keyboard.
+Clicking the blank strip in an empty compartment creates its first member.
+
+Members are edited as the exact string the diagram draws:
+
+```
+- /total: Money [0..*] = 0
++ move(dx: int, out ok: bool): Point
+```
+
+which is read back by `model.parseAttribute` / `parseOperation`. The parsers never fail —
+text that matches nothing becomes the member's name, because losing what someone typed is
+worse than storing something odd. Two properties they guarantee:
+
+- **Round-trip.** `format(parse(format(x)))` equals `format(x)`, so opening a field and
+  pressing Enter changes nothing.
+- **Static and abstract survive.** Those render as underline and italic, which the one
+  edited line cannot express, so they are carried over from the member being replaced
+  rather than read from the text. The same goes for the member's id, so editing a row
+  modifies it rather than replacing it.
+
+A box grows automatically when a new row would not fit, but never shrinks on its own — a
+size you chose by dragging is yours to keep.
+
+Notes are the exception to the Enter rule: their text is genuinely multi-line, so
+Shift+Enter inserts a line break there and the arrow keys move the caret.
+
+### How it works
+
+SVG `<text>` cannot be typed into. Rather than a `<foreignObject>`, the editor positions a
+real HTML `<input>` over the line being edited, using the same rectangle the renderer used
+to draw it (`render.lineBoxes`). Caret, selection, double-click-to-select-word, clipboard,
+and IME are then simply the browser's, none of which would be free inside SVG. The line
+underneath is skipped while its field is open, so the text never shows through.
 
 ## File format
 
@@ -157,23 +208,27 @@ above it, and every file is an IIFE hanging one property off the `UMLOne` global
 | `src/ns.js` | The namespace; ids, cloning, events, DOM helpers |
 | `src/geometry.js` | Rect and polyline math; clipping a line to a box border |
 | `src/measure.js` | SVG text measurement, cached |
-| `src/model.js` | The semantic half: elements, relationships, formatting |
+| `src/model.js` | The semantic half: elements, relationships, formatting, parsing |
 | `src/diagram.js` | The diagram half: nodes, edges, routing, integrity |
 | `src/validate.js` | Validation, normalization, canonical key order |
 | `src/io.js` | Serialize, deserialize, file read, download, drag-and-drop |
-| `src/render.js` | Layout and SVG drawing |
+| `src/render.js` | Layout, line rectangles, and SVG drawing |
 | `src/commands.js` | The document store, undo stack, composite operations |
+| `src/inlineedit.js` | In-place text editing on the diagram |
 | `src/interact.js` | Pointer and keyboard handling |
 | `src/panel.js` | The property inspector |
 | `src/app.js` | Wiring |
 
-Two design decisions worth knowing before changing anything:
+Three design decisions worth knowing before changing anything:
 
 - **A document is plain JSON data, never a graph of class instances.** That is what makes
   snapshot undo and lossless round-tripping cheap.
 - **Every mutation goes through `store.apply`**, which snapshots first. Undo is therefore
   correct by construction rather than by remembering to add it each time. Continuous
   gestures use `applyContinuous` so one drag is one undo step.
+- **`render.lineBoxes` is the only answer to "where is this line?"** The drawn text, the
+  invisible click targets, and the in-place editor all read from it, so what you see, what
+  you click, and where the text box appears cannot drift apart.
 
 ## Current limits
 

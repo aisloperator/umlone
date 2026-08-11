@@ -6,8 +6,10 @@
 // of sync with the model, because the picture has no state of its own.
 //
 // Layout is computed here rather than stored. `layout()` turns an element into bands of
-// text lines; both the renderer and "size to fit" consume it, so what you see and what
-// the box resizes to can never disagree.
+// text lines; `lineBoxes()` turns those into rectangles. Everything that needs to know
+// where a line sits — the renderer, "size to fit", the click targets, and the in-place
+// editor — goes through those two functions, so what you see, what you click, and where
+// the text box appears cannot disagree.
 
 (function (ns) {
   'use strict';
@@ -51,7 +53,8 @@
   // --- layout ----------------------------------------------------------------
 
   // Turns an element into a list of bands. A band is one compartment: a set of text lines
-  // plus how they are aligned. The header band is centred, member bands are left-aligned.
+  // plus how they are aligned. Lines that the user can edit in place carry `editKind` and
+  // `editIndex`, which is what ties a drawn line back to the model member behind it.
   function layout(doc, element, node) {
     var show = (node && node.show) || { attributes: true, operations: true };
     var bands = [];
@@ -59,23 +62,32 @@
     if (element.kind === 'comment') {
       var innerWidth = Math.max(40, (node ? node.w : 170) - PAD_X * 2);
       return {
+        kind: 'comment',
         bands: [{
+          kind: 'body',
+          editKind: 'body',
           align: 'start',
           lines: measure.wrap(element.body, 'comment', innerWidth).map(function (text) {
-            return { text: text, font: 'comment' };
+            // Every wrapped line maps back to the one body string.
+            return { text: text, font: 'comment', editKind: 'body', editIndex: 0 };
           })
-        }],
-        kind: 'comment'
+        }]
       };
     }
 
     if (element.kind === 'package') {
       return {
+        kind: 'package',
         bands: [{
+          kind: 'header',
           align: 'start',
-          lines: [{ text: element.name || '(unnamed package)', font: 'name' }]
-        }],
-        kind: 'package'
+          lines: [{
+            text: element.name || '(unnamed package)',
+            font: 'name',
+            editKind: 'name',
+            editIndex: 0
+          }]
+        }]
       };
     }
 
@@ -97,21 +109,27 @@
     headerLines.push({
       text: element.name || '(unnamed)',
       font: element.isAbstract ? 'nameItalic' : 'name',
-      cls: 'node-name' + (element.isAbstract ? ' abstract' : '')
+      cls: 'node-name' + (element.isAbstract ? ' abstract' : ''),
+      editKind: 'name',
+      editIndex: 0
     });
 
-    bands.push({ align: 'middle', lines: headerLines });
+    bands.push({ kind: 'header', align: 'middle', lines: headerLines });
 
     var traits = model.traits(element.kind);
 
     if (traits.attributes && show.attributes) {
       bands.push({
+        kind: 'attributes',
+        editKind: 'attribute',
         align: 'start',
-        lines: (element.attributes || []).map(function (attr) {
+        lines: (element.attributes || []).map(function (attr, index) {
           return {
             text: model.formatAttribute(attr),
             font: 'member',
-            cls: 'node-member' + (attr.isStatic ? ' static' : '')
+            cls: 'node-member' + (attr.isStatic ? ' static' : ''),
+            editKind: 'attribute',
+            editIndex: index
           };
         })
       });
@@ -119,13 +137,17 @@
 
     if (traits.operations && show.operations) {
       bands.push({
+        kind: 'operations',
+        editKind: 'operation',
         align: 'start',
-        lines: (element.operations || []).map(function (op) {
+        lines: (element.operations || []).map(function (op, index) {
           return {
             text: model.formatOperation(op),
             font: op.isAbstract ? 'memberItalic' : 'member',
             cls: 'node-member' + (op.isStatic ? ' static' : '') +
-                 (op.isAbstract ? ' abstract' : '')
+                 (op.isAbstract ? ' abstract' : ''),
+            editKind: 'operation',
+            editIndex: index
           };
         })
       });
@@ -133,26 +155,124 @@
 
     if (traits.literals) {
       bands.push({
+        kind: 'literals',
+        editKind: 'literal',
         align: 'start',
-        lines: (element.literals || []).map(function (literal) {
-          return { text: literal, font: 'member', cls: 'node-member' };
+        lines: (element.literals || []).map(function (literal, index) {
+          return {
+            text: literal,
+            font: 'member',
+            cls: 'node-member',
+            editKind: 'literal',
+            editIndex: index
+          };
         })
       });
     }
 
-    return { bands: bands, kind: element.kind };
+    return { kind: element.kind, bands: bands };
   }
 
   function bandHeight(band) {
     // An empty compartment still gets a sliver of height so the separator line has
-    // somewhere to sit and the box does not look truncated.
+    // somewhere to sit, the box does not look truncated, and there is a row to click on
+    // to add the first member.
     return band.lines.length
       ? band.lines.length * LINE_H + PAD_Y * 2
       : LINE_H;
   }
 
-  // Smallest box that shows every line without clipping. Drives the "Size to fit" action
-  // and the size of newly created nodes.
+  // Rectangles for every editable line, in node-local coordinates. The single source of
+  // truth for "where is this line?" — used to draw the text, to place the invisible click
+  // targets, and to position the in-place editor.
+  //
+  // A `placeholder` box is an empty compartment: clicking it means "create the first one".
+  function lineBoxes(doc, element, node, info) {
+    info = info || layout(doc, element, node);
+    var width = node.w;
+    var boxes = [];
+
+    if (info.kind === 'package') {
+      boxes.push({
+        kind: 'name', index: 0,
+        x: 0, y: 0, w: width, h: PACKAGE_TAB_H,
+        font: 'name', align: 'start'
+      });
+      return boxes;
+    }
+
+    if (info.kind === 'comment') {
+      // The whole note is one editable field; wrapping is a display detail.
+      boxes.push({
+        kind: 'body', index: 0,
+        x: 0, y: 0, w: width, h: node.h,
+        font: 'comment', align: 'start', multiline: true
+      });
+      return boxes;
+    }
+
+    var y = 0;
+    info.bands.forEach(function (band) {
+      if (band.lines.length) {
+        band.lines.forEach(function (line, i) {
+          if (!line.editKind) { return; }   // stereotype line: edited in the inspector
+          boxes.push({
+            kind: line.editKind,
+            index: line.editIndex,
+            x: 0,
+            y: y + PAD_Y + i * LINE_H,
+            w: width,
+            h: LINE_H,
+            font: line.font,
+            align: band.align
+          });
+        });
+      } else if (band.editKind) {
+        boxes.push({
+          kind: band.editKind,
+          index: 0,
+          x: 0, y: y, w: width, h: LINE_H,
+          font: 'member', align: 'start',
+          placeholder: true
+        });
+      }
+      y += bandHeight(band);
+    });
+
+    return boxes;
+  }
+
+  // The rectangle to put a text editor over, in absolute diagram coordinates.
+  function editBox(doc, element, node, target) {
+    var boxes = lineBoxes(doc, element, node);
+
+    for (var i = 0; i < boxes.length; i++) {
+      var box = boxes[i];
+      if (box.kind === target.kind && box.index === target.index) {
+        return {
+          x: node.x + box.x,
+          y: node.y + box.y,
+          w: box.w,
+          h: box.h,
+          font: box.font,
+          align: box.align,
+          multiline: !!box.multiline
+        };
+      }
+    }
+    return null;
+  }
+
+  // Editable slots in visual order, for arrow-key and Tab traversal. Placeholders are
+  // left out: arrowing into an empty compartment should not silently create a member.
+  function editSlots(doc, element, node) {
+    return lineBoxes(doc, element, node)
+      .filter(function (box) { return !box.placeholder; })
+      .map(function (box) { return { kind: box.kind, index: box.index }; });
+  }
+
+  // Smallest box that shows every line without clipping. Drives "Size to fit", the size
+  // of newly created nodes, and the automatic growth when a member is added.
   function preferredSize(doc, element, node) {
     var info = layout(doc, element, node);
     var widest = 0;
@@ -184,6 +304,13 @@
 
   // --- node drawing ----------------------------------------------------------
 
+  function isBeingEdited(editing, node, line) {
+    return !!editing &&
+           editing.nodeId === node.id &&
+           editing.kind === line.editKind &&
+           editing.index === line.editIndex;
+  }
+
   function drawTextLine(parent, line, x, y, anchor) {
     var font = measure.FONT[line.font] || measure.FONT.member;
     var el = ns.svg('text', {
@@ -199,26 +326,44 @@
     return el;
   }
 
-  function drawBands(group, info, width, height, startY) {
-    var y = startY;
+  // Invisible full-width rows sitting over the text. Glyph-only hit-testing would make
+  // the gap after a short attribute name unclickable, and clicking anywhere on the row is
+  // what a text editor trains you to expect.
+  function drawLineTargets(parent, boxes) {
+    boxes.forEach(function (box) {
+      ns.svg('rect', {
+        x: box.x,
+        y: box.y,
+        width: box.w,
+        height: box.h,
+        'class': 'line-hit',
+        'data-edit-kind': box.kind,
+        'data-edit-index': box.index
+      }, parent);
+    });
+  }
+
+  function drawBands(group, info, node, editing) {
+    var y = 0;
 
     info.bands.forEach(function (band, index) {
       if (index > 0) {
         ns.svg('line', {
-          x1: 0, y1: y, x2: width, y2: y, 'class': 'node-compartment-line'
+          x1: 0, y1: y, x2: node.w, y2: y, 'class': 'node-compartment-line'
         }, group);
       }
 
       var textY = y + PAD_Y + LINE_H - 4;
       band.lines.forEach(function (line) {
-        if (textY > height) { return; } // clipped away anyway; skip the DOM node
-        drawTextLine(
-          group,
-          line,
-          band.align === 'middle' ? width / 2 : PAD_X,
-          textY,
-          band.align === 'middle' ? 'middle' : 'start'
-        );
+        if (textY <= node.h && !isBeingEdited(editing, node, line)) {
+          drawTextLine(
+            group,
+            line,
+            band.align === 'middle' ? node.w / 2 : PAD_X,
+            textY,
+            band.align === 'middle' ? 'middle' : 'start'
+          );
+        }
         textY += LINE_H;
       });
 
@@ -226,15 +371,16 @@
     });
   }
 
-  function drawClassifier(group, info, node) {
+  function drawClassifier(group, info, node, editing) {
     ns.svg('rect', {
       x: 0, y: 0, width: node.w, height: node.h, 'class': 'node-shape'
     }, group);
-    drawBands(group, info, node.w, node.h, 0);
+    drawBands(group, info, node, editing);
   }
 
-  function drawPackage(group, info, node) {
-    var nameWidth = measure.width(info.bands[0].lines[0].text, 'name');
+  function drawPackage(group, info, node, editing) {
+    var line = info.bands[0].lines[0];
+    var nameWidth = measure.width(line.text, 'name');
     var tabWidth = Math.min(node.w - 10, Math.max(70, nameWidth + PAD_X * 2));
 
     ns.svg('rect', {
@@ -247,35 +393,36 @@
       'class': 'node-shape package-body'
     }, group);
 
-    drawTextLine(group, info.bands[0].lines[0], PAD_X, PACKAGE_TAB_H - 7, 'start');
+    if (!isBeingEdited(editing, node, line)) {
+      drawTextLine(group, line, PAD_X, PACKAGE_TAB_H - 7, 'start');
+    }
   }
 
-  function drawComment(group, info, node) {
+  function drawComment(group, info, node, editing) {
     var fold = COMMENT_FOLD;
-    var w = node.w;
-    var h = node.h;
 
     ns.svg('path', {
-      d: 'M 0 0 H ' + (w - fold) + ' L ' + w + ' ' + fold +
-         ' V ' + h + ' H 0 Z',
+      d: 'M 0 0 H ' + (node.w - fold) + ' L ' + node.w + ' ' + fold +
+         ' V ' + node.h + ' H 0 Z',
       'class': 'node-shape comment-shape'
     }, group);
 
     ns.svg('path', {
-      d: 'M ' + (w - fold) + ' 0 V ' + fold + ' H ' + w,
+      d: 'M ' + (node.w - fold) + ' 0 V ' + fold + ' H ' + node.w,
       'class': 'comment-fold',
       fill: 'none'
     }, group);
 
     var textY = PAD_Y + LINE_H - 4;
     info.bands[0].lines.forEach(function (line) {
-      if (textY > h) { return; }
-      drawTextLine(group, line, PAD_X, textY, 'start');
+      if (textY <= node.h && !isBeingEdited(editing, node, line)) {
+        drawTextLine(group, line, PAD_X, textY, 'start');
+      }
       textY += LINE_H;
     });
   }
 
-  function drawNode(layer, doc, node, selected) {
+  function drawNode(layer, doc, node, selected, editing) {
     var element = model.findElement(doc, node.ref);
     if (!element) { return; } // prune() should have removed this already
 
@@ -296,12 +443,14 @@
     var info = layout(doc, element, node);
 
     if (element.kind === 'package') {
-      drawPackage(inner, info, node);
+      drawPackage(inner, info, node, editing);
     } else if (element.kind === 'comment') {
-      drawComment(inner, info, node);
+      drawComment(inner, info, node, editing);
     } else {
-      drawClassifier(inner, info, node);
+      drawClassifier(inner, info, node, editing);
     }
+
+    drawLineTargets(inner, lineBoxes(doc, element, node, info));
 
     return group;
   }
@@ -507,7 +656,8 @@
   // --- entry point -----------------------------------------------------------
 
   // `state` carries transient, unsaved UI concerns: what is selected, where the viewport
-  // is, and any in-progress gesture. None of it belongs in the document.
+  // is, any in-progress gesture, and which line is currently open in the text editor.
+  // None of it belongs in the document.
   function draw(svg, doc, diagram, state) {
     ns.clear(svg);
 
@@ -524,6 +674,7 @@
 
     var selectedNodes = state.selectedNodes || {};
     var selectedEdges = state.selectedEdges || {};
+    var editing = state.editing || null;
 
     // Edges first so boxes sit on top of them; endpoints are clipped to the borders, so
     // nothing is hidden that should be visible.
@@ -532,16 +683,19 @@
     });
 
     ns.diagram.drawOrder(doc, diagram).forEach(function (node) {
-      var group = drawNode(nodeLayer, doc, node, !!selectedNodes[node.id]);
+      var group = drawNode(nodeLayer, doc, node, !!selectedNodes[node.id], editing);
       if (group && state.edgeSourceNodeId === node.id) {
         group.setAttribute('class', group.getAttribute('class') + ' edge-source-hint');
       }
     });
 
-    Object.keys(selectedNodes).forEach(function (nodeId) {
-      var node = ns.diagram.findNode(diagram, nodeId);
-      if (node) { drawNodeHandles(overlay, node); }
-    });
+    // Resize handles are noise while typing, and they sit exactly where the text box is.
+    if (!editing) {
+      Object.keys(selectedNodes).forEach(function (nodeId) {
+        var node = ns.diagram.findNode(diagram, nodeId);
+        if (node) { drawNodeHandles(overlay, node); }
+      });
+    }
 
     Object.keys(selectedEdges).forEach(function (edgeId) {
       var edge = ns.diagram.findEdge(diagram, edgeId);
@@ -571,9 +725,13 @@
 
   ns.render = {
     EDGE_STYLE: EDGE_STYLE,
+    PACKAGE_TAB_H: PACKAGE_TAB_H,
     edgeStyle: edgeStyle,
     layout: layout,
     bandHeight: bandHeight,
+    lineBoxes: lineBoxes,
+    editBox: editBox,
+    editSlots: editSlots,
     preferredSize: preferredSize,
     draw: draw
   };

@@ -23,10 +23,16 @@
     var onRender = options.onRender || function () {};
     var onSelectionChange = options.onSelectionChange || function () {};
     var onStatus = options.onStatus || function () {};
-    var onEditRequest = options.onEditRequest || function () {};
     // The tool can change without the palette being clicked — after placing an element,
     // after drawing a relationship, or on Escape — so the palette has to be told.
     var onToolChange = options.onToolChange || function () {};
+    var inlineEdit = options.inlineEdit;
+
+    // The text box is positioned from the viewport and from the model, so anything that
+    // moves either one has to close it first rather than leave it floating.
+    function commitInlineEdit() {
+      if (inlineEdit && inlineEdit.isActive()) { inlineEdit.commit(); }
+    }
 
     var state = {
       tool: { type: 'select', kind: null },
@@ -221,6 +227,7 @@
     }
 
     function beginPan(evt) {
+      commitInlineEdit();
       gesture = {
         type: 'pan',
         startClient: { x: evt.clientX, y: evt.clientY },
@@ -245,6 +252,10 @@
 
       var diagram = store.currentDiagram();
       if (!diagram) { return; }
+
+      // Clicking the canvas while a field is open commits it, the same as clicking away
+      // from any text box.
+      commitInlineEdit();
 
       svg.setPointerCapture(evt.pointerId);
 
@@ -472,12 +483,25 @@
       var point = snapPoint(toDiagram(evt), evt);
       var created = ns.commands.createElementOn(store, state.tool.kind, point.x, point.y);
       setTool('select', null);
+
       if (created) {
         clearSelection(true);
         state.selectedNodes[created.nodeId] = true;
         announceSelection();
-        onEditRequest(created.elementId);
+
+        // Drop straight into naming it, so placing a class and typing its name is one
+        // uninterrupted gesture.
+        if (inlineEdit) {
+          var element = ns.model.findElement(store.doc, created.elementId);
+          inlineEdit.begin({
+            nodeId: created.nodeId,
+            kind: element && element.kind === 'comment' ? 'body' : 'name',
+            index: 0
+          });
+          return;
+        }
       }
+
       onRender();
     }
 
@@ -522,6 +546,7 @@
     }
 
     function setTool(type, kind) {
+      commitInlineEdit();
       state.tool = { type: type, kind: kind };
       state.pendingEdge = null;
       state.edgeSourceNodeId = null;
@@ -561,10 +586,34 @@
       }
 
       var nodeGroup = evt.target.closest ? evt.target.closest('.node') : null;
-      if (nodeGroup) {
-        var node = ns.diagram.findNode(diagram, nodeGroup.getAttribute('data-node-id'));
-        if (node) { onEditRequest(node.ref); }
+      if (!nodeGroup || !inlineEdit) { return; }
+
+      var nodeId = nodeGroup.getAttribute('data-node-id');
+
+      // The renderer stamps every editable line with its kind and index, so the row that
+      // was double-clicked is known exactly rather than worked out from the y coordinate.
+      var lineHit = evt.target.closest ? evt.target.closest('.line-hit') : null;
+      if (lineHit) {
+        evt.preventDefault();
+        inlineEdit.begin({
+          nodeId: nodeId,
+          kind: lineHit.getAttribute('data-edit-kind'),
+          index: parseInt(lineHit.getAttribute('data-edit-index'), 10) || 0
+        });
+        return;
       }
+
+      // Double-clicking anywhere else on a box edits whatever names it.
+      var node = ns.diagram.findNode(diagram, nodeId);
+      var element = node ? ns.model.findElement(store.doc, node.ref) : null;
+      if (!element) { return; }
+
+      evt.preventDefault();
+      inlineEdit.begin({
+        nodeId: nodeId,
+        kind: element.kind === 'comment' ? 'body' : 'name',
+        index: 0
+      });
     }
 
     function insertWaypoint(edgeId, point, evt) {
@@ -601,6 +650,8 @@
     // --- zoom ----------------------------------------------------------------
 
     function onWheel(evt) {
+      commitInlineEdit();
+
       // Ctrl/Cmd + wheel zooms, plain wheel scrolls. This is what draw.io, Figma, and
       // every browser do, so it is what fingers expect.
       if (evt.ctrlKey || evt.metaKey) {
@@ -629,6 +680,7 @@
     // Keeps the point under (cx, cy) fixed while the scale changes, so zooming feels
     // anchored to the cursor rather than to the corner.
     function applyZoom(scale, cx, cy) {
+      commitInlineEdit();
       var next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
       var ratio = next / state.viewport.scale;
       state.viewport.x = cx - (cx - state.viewport.x) * ratio;
@@ -643,6 +695,7 @@
     }
 
     function fitToContent() {
+      commitInlineEdit();
       var diagram = store.currentDiagram();
       if (!diagram) { return; }
 
