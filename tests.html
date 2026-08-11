@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UMLOne tests</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 13px;
+    margin: 0;
+    padding: 20px 24px 60px;
+    color: #1b1d21;
+    background: #f4f5f7;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .intro { color: #62676f; margin: 0 0 18px; }
+  .summary {
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 18px;
+  }
+  .summary.good { background: #d9f0dd; color: #17491f; }
+  .summary.bad { background: #fbdcd9; color: #7a1c14; }
+  section { margin-bottom: 18px; }
+  h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #62676f;
+    margin: 0 0 6px;
+  }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { padding: 3px 0 3px 4px; border-left: 3px solid transparent; }
+  li.pass { color: #17491f; border-left-color: #4c9a5c; }
+  li.fail { color: #7a1c14; border-left-color: #c0392b; background: #fdf1ef; }
+  pre {
+    margin: 4px 0 8px 18px;
+    padding: 8px;
+    background: #fff;
+    border: 1px solid #e4c9c5;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    font-size: 12px;
+  }
+  /* Rendering tests draw into real SVG, which has to be laid out to be measurable —
+     hence off-screen rather than display:none. */
+  #sandbox {
+    position: absolute;
+    top: -20000px;
+    left: -20000px;
+    width: 1200px;
+    height: 900px;
+    overflow: hidden;
+  }
+</style>
+</head>
+<body>
+
+<h1>UMLOne tests</h1>
+<p class="intro">Open this file directly &mdash; no server, no test runner.
+  Everything below ran in this browser.</p>
+
+<div id="output"></div>
+<div id="sandbox" aria-hidden="true"></div>
+
+<!-- Same order as index.html, minus app.js: booting the editor needs chrome this page
+     does not have. -->
+<script src="src/ns.js"></script>
+<script src="src/geometry.js"></script>
+<script src="src/measure.js"></script>
+<script src="src/model.js"></script>
+<script src="src/diagram.js"></script>
+<script src="src/validate.js"></script>
+<script src="src/io.js"></script>
+<script src="src/render.js"></script>
+<script src="src/commands.js"></script>
+<script src="src/interact.js"></script>
+<script src="src/panel.js"></script>
+
+<script src="src/tests/harness.js"></script>
+<!-- format.tests.js defines the shared fixture the later suites reuse. -->
+<script src="src/tests/geometry.tests.js"></script>
+<script src="src/tests/format.tests.js"></script>
+<script src="src/tests/model.tests.js"></script>
+<script src="src/tests/commands.tests.js"></script>
+<script src="src/tests/render.tests.js"></script>
+
+<script>
+  (function () {
+    'use strict';
+    function go() {
+      var result = T.run(document.getElementById('output'));
+      document.title = (result.failed ? '✗ ' + result.failed + ' failed' : '✓ all passed') +
+                       ' — UMLOne tests';
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', go);
+    } else {
+      go();
+    }
+  })();
+</script>
+
+</body>
+</html>

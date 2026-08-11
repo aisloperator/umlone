@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UMLOne</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header id="toolbar">
+  <span class="brand">UMLOne</span>
+
+  <div class="group">
+    <button type="button" id="btn-new" title="New document">New</button>
+    <button type="button" id="btn-open" title="Open a .uml.json file">Open&hellip;</button>
+    <button type="button" id="btn-download" title="Download this document">Download</button>
+    <!-- The file input is the only way to read a local file without a server. -->
+    <input type="file" id="file-input" accept=".json,.uml.json,application/json" hidden>
+  </div>
+
+  <div class="group">
+    <button type="button" id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button type="button" id="btn-redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+  </div>
+
+  <div class="group">
+    <button type="button" id="btn-zoom-out" title="Zoom out">&minus;</button>
+    <span id="zoom-level">100%</span>
+    <button type="button" id="btn-zoom-in" title="Zoom in">+</button>
+    <button type="button" id="btn-zoom-fit" title="Fit diagram in view">Fit</button>
+  </div>
+
+  <div class="group grow">
+    <label for="diagram-select">Diagram</label>
+    <select id="diagram-select"></select>
+    <button type="button" id="btn-diagram-add" title="Add a diagram">+</button>
+    <button type="button" id="btn-diagram-rename" title="Rename this diagram">Rename</button>
+    <button type="button" id="btn-diagram-delete" title="Delete this diagram">Delete</button>
+  </div>
+
+  <div class="group">
+    <span id="doc-status" class="status"></span>
+  </div>
+</header>
+
+<div id="workspace">
+
+  <nav id="palette">
+    <h2>Elements</h2>
+    <button type="button" class="tool" data-tool="select" data-kind="">Select</button>
+    <button type="button" class="tool" data-tool="node" data-kind="class">Class</button>
+    <button type="button" class="tool" data-tool="node" data-kind="interface">Interface</button>
+    <button type="button" class="tool" data-tool="node" data-kind="enumeration">Enum</button>
+    <button type="button" class="tool" data-tool="node" data-kind="package">Package</button>
+    <button type="button" class="tool" data-tool="node" data-kind="comment">Note</button>
+
+    <h2>Relationships</h2>
+    <button type="button" class="tool" data-tool="edge" data-kind="association">Association</button>
+    <button type="button" class="tool" data-tool="edge" data-kind="aggregation">Aggregation</button>
+    <button type="button" class="tool" data-tool="edge" data-kind="composition">Composition</button>
+    <button type="button" class="tool" data-tool="edge" data-kind="generalization">Generalization</button>
+    <button type="button" class="tool" data-tool="edge" data-kind="realization">Realization</button>
+    <button type="button" class="tool" data-tool="edge" data-kind="dependency">Dependency</button>
+    <button type="button" class="tool" data-tool="edge" data-kind="annotation">Note link</button>
+
+    <p class="hint" id="palette-hint">Drag a class onto the canvas. For a relationship,
+      click the source element then the target.</p>
+  </nav>
+
+  <main id="canvas-host">
+    <svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="drop-overlay">Drop a <code>.uml.json</code> file to open it</div>
+  </main>
+
+  <aside id="inspector">
+    <h2 id="inspector-title">Nothing selected</h2>
+    <div id="inspector-body"></div>
+  </aside>
+
+</div>
+
+<!-- Script order is the dependency graph: each file only uses globals defined above it. -->
+<script src="src/ns.js"></script>
+<script src="src/geometry.js"></script>
+<script src="src/measure.js"></script>
+<script src="src/model.js"></script>
+<script src="src/diagram.js"></script>
+<script src="src/validate.js"></script>
+<script src="src/io.js"></script>
+<script src="src/render.js"></script>
+<script src="src/commands.js"></script>
+<script src="src/interact.js"></script>
+<script src="src/panel.js"></script>
+<script src="src/app.js"></script>
+
+</body>
+</html>

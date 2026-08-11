@@ -1,0 +1,371 @@
+/* UMLOne styling. System fonts only — no downloads, so nothing here may reference a
+   remote font or image. Diagram colours live here too, referenced by class name from
+   render.js, so appearance stays out of the drawing code. */
+
+:root {
+  --bg: #f4f5f7;
+  --panel-bg: #ffffff;
+  --border: #c9ccd1;
+  --border-strong: #8b9099;
+  --text: #1b1d21;
+  --text-dim: #62676f;
+  --accent: #2b6cb0;
+  --accent-soft: #d8e6f5;
+  --canvas-bg: #ffffff;
+  --grid: #e8eaed;
+  --selected: #2b6cb0;
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+             Arial, sans-serif;
+  --diagram-font: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* --- toolbar -------------------------------------------------------------- */
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 10px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+
+#toolbar .brand {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+#toolbar .group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#toolbar .group.grow { flex: 1; }
+
+#toolbar label {
+  color: var(--text-dim);
+  margin-right: 2px;
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { background: var(--accent-soft); }
+button:disabled { opacity: 0.4; cursor: default; }
+
+select, input[type="text"], input[type="number"], textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 5px;
+}
+
+#zoom-level {
+  min-width: 44px;
+  text-align: center;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.status { color: var(--text-dim); }
+.status.dirty { color: #a8500b; font-weight: 600; }
+.status.error { color: #b3261e; font-weight: 600; }
+
+/* --- layout --------------------------------------------------------------- */
+
+#workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+#palette {
+  width: 150px;
+  flex: none;
+  padding: 8px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+#palette h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 10px 0 5px;
+}
+
+#palette h2:first-child { margin-top: 0; }
+
+#palette .tool {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 3px;
+}
+
+#palette .tool.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+#palette .hint {
+  margin-top: 12px;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+#canvas-host {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  background: var(--canvas-bg);
+}
+
+#canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: default;
+  /* Stop the browser from turning a drag into a text selection or a pan gesture. */
+  touch-action: none;
+  user-select: none;
+}
+
+#canvas.tool-node { cursor: copy; }
+#canvas.tool-edge { cursor: crosshair; }
+#canvas.panning { cursor: grabbing; }
+
+#drop-overlay {
+  position: absolute;
+  inset: 12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  background: rgba(43, 108, 176, 0.06);
+  color: var(--accent);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+#canvas-host.drop-active #drop-overlay { display: flex; }
+
+#inspector {
+  width: 280px;
+  flex: none;
+  padding: 10px;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+#inspector h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0 0 10px;
+}
+
+/* --- inspector forms ------------------------------------------------------ */
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.field > label {
+  width: 84px;
+  flex: none;
+  color: var(--text-dim);
+}
+
+.field > input[type="text"],
+.field > select,
+.field > textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+.field.check > label { width: auto; }
+
+.subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 6px;
+  font-weight: 600;
+}
+
+.member-list { margin: 0; padding: 0; list-style: none; }
+
+.member {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px;
+  margin-bottom: 6px;
+  background: #fbfbfc;
+}
+
+.member .row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.member .row:last-child { margin-bottom: 0; }
+.member input[type="text"] { min-width: 0; flex: 1; }
+.member select { flex: none; }
+
+.member .params {
+  margin-top: 4px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}
+
+.tiny {
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.danger { color: #b3261e; }
+
+.empty {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.readonly-id {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+/* --- diagram (SVG) -------------------------------------------------------- */
+
+#canvas text {
+  font-family: var(--diagram-font);
+  fill: var(--text);
+  /* Text is decoration for hit-testing purposes; the shape underneath takes the click. */
+  pointer-events: none;
+}
+
+.node-shape {
+  fill: #ffffff;
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.node.selected .node-shape {
+  stroke: var(--selected);
+  stroke-width: 2;
+}
+
+.node-compartment-line { stroke: var(--border-strong); stroke-width: 1; }
+
+.node-name { font-weight: 600; text-anchor: middle; }
+.node-name.abstract { font-style: italic; }
+.node-stereotype { text-anchor: middle; fill: var(--text-dim); }
+.node-member { text-anchor: start; }
+.node-member.static { text-decoration: underline; }
+.node-member.abstract { font-style: italic; }
+
+.package-tab { fill: #ffffff; stroke: var(--border-strong); stroke-width: 1; }
+.package-body { fill: rgba(255, 255, 255, 0.35); }
+.comment-shape { fill: #fffdf0; stroke: #c9b878; }
+.comment-fold { fill: #efe8c8; stroke: #c9b878; }
+
+.edge-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.25;
+}
+
+.edge.selected .edge-line { stroke: var(--selected); stroke-width: 2.5; }
+.edge-dashed { stroke-dasharray: 6 4; }
+
+/* Transparent fat stroke sitting under each edge so thin lines are still clickable. */
+.edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+  cursor: pointer;
+}
+
+.edge-decoration { stroke: var(--text); stroke-width: 1.25; }
+.edge-decoration.hollow { fill: #ffffff; }
+.edge-decoration.filled { fill: var(--text); }
+.edge-decoration.open { fill: none; }
+.edge.selected .edge-decoration { stroke: var(--selected); }
+.edge.selected .edge-decoration.filled { fill: var(--selected); }
+
+.edge-label { text-anchor: middle; font-size: 11px; }
+
+.handle {
+  fill: #ffffff;
+  stroke: var(--selected);
+  stroke-width: 1.5;
+}
+
+.handle.nw, .handle.se { cursor: nwse-resize; }
+.handle.ne, .handle.sw { cursor: nesw-resize; }
+.handle.n, .handle.s { cursor: ns-resize; }
+.handle.e, .handle.w { cursor: ew-resize; }
+.handle.waypoint { cursor: move; }
+
+.marquee {
+  fill: rgba(43, 108, 176, 0.10);
+  stroke: var(--selected);
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+}
+
+.pending-edge {
+  fill: none;
+  stroke: var(--selected);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  pointer-events: none;
+}
+
+.edge-source-hint .node-shape { stroke: var(--selected); stroke-width: 2; }

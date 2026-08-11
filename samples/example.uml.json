@@ -1,0 +1,676 @@
+{
+  "format": "umlone",
+  "version": 1,
+  "model": {
+    "elements": [
+      {
+        "id": "p_sales",
+        "kind": "package",
+        "name": "sales",
+        "stereotypes": [],
+        "owner": null
+      },
+      {
+        "id": "c_order",
+        "kind": "class",
+        "name": "Order",
+        "isAbstract": false,
+        "stereotypes": [
+          "entity"
+        ],
+        "attributes": [
+          {
+            "id": "a_order_id",
+            "name": "id",
+            "type": "OrderId",
+            "visibility": "private",
+            "multiplicity": "",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": false
+          },
+          {
+            "id": "a_order_placed",
+            "name": "placedAt",
+            "type": "DateTime",
+            "visibility": "private",
+            "multiplicity": "",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": false
+          },
+          {
+            "id": "a_order_total",
+            "name": "total",
+            "type": "Money",
+            "visibility": "public",
+            "multiplicity": "",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": true
+          }
+        ],
+        "operations": [
+          {
+            "id": "o_order_recalc",
+            "name": "recalculate",
+            "returnType": "void",
+            "visibility": "public",
+            "isStatic": false,
+            "isAbstract": false,
+            "parameters": [
+              {
+                "name": "policy",
+                "type": "TaxPolicy",
+                "direction": "in"
+              }
+            ]
+          },
+          {
+            "id": "o_order_addline",
+            "name": "addLine",
+            "returnType": "OrderLine",
+            "visibility": "public",
+            "isStatic": false,
+            "isAbstract": false,
+            "parameters": [
+              {
+                "name": "product",
+                "type": "Product",
+                "direction": "in"
+              },
+              {
+                "name": "quantity",
+                "type": "int",
+                "direction": "in"
+              }
+            ]
+          }
+        ],
+        "owner": "p_sales"
+      },
+      {
+        "id": "c_orderline",
+        "kind": "class",
+        "name": "OrderLine",
+        "isAbstract": false,
+        "stereotypes": [],
+        "attributes": [
+          {
+            "id": "a_line_qty",
+            "name": "quantity",
+            "type": "int",
+            "visibility": "private",
+            "multiplicity": "",
+            "defaultValue": "1",
+            "isStatic": false,
+            "isDerived": false
+          },
+          {
+            "id": "a_line_price",
+            "name": "unitPrice",
+            "type": "Money",
+            "visibility": "private",
+            "multiplicity": "",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": false
+          }
+        ],
+        "operations": [
+          {
+            "id": "o_line_subtotal",
+            "name": "subtotal",
+            "returnType": "Money",
+            "visibility": "public",
+            "isStatic": false,
+            "isAbstract": false,
+            "parameters": []
+          }
+        ],
+        "owner": "p_sales"
+      },
+      {
+        "id": "c_party",
+        "kind": "class",
+        "name": "Party",
+        "isAbstract": true,
+        "stereotypes": [],
+        "attributes": [
+          {
+            "id": "a_party_name",
+            "name": "name",
+            "type": "String",
+            "visibility": "protected",
+            "multiplicity": "",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": false
+          }
+        ],
+        "operations": [
+          {
+            "id": "o_party_label",
+            "name": "displayLabel",
+            "returnType": "String",
+            "visibility": "public",
+            "isStatic": false,
+            "isAbstract": true,
+            "parameters": []
+          }
+        ],
+        "owner": null
+      },
+      {
+        "id": "c_customer",
+        "kind": "class",
+        "name": "Customer",
+        "isAbstract": false,
+        "stereotypes": [],
+        "attributes": [
+          {
+            "id": "a_cust_email",
+            "name": "email",
+            "type": "String",
+            "visibility": "private",
+            "multiplicity": "",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": false
+          },
+          {
+            "id": "a_cust_tier",
+            "name": "loyaltyTier",
+            "type": "String",
+            "visibility": "private",
+            "multiplicity": "0..1",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": false
+          }
+        ],
+        "operations": [],
+        "owner": null
+      },
+      {
+        "id": "c_product",
+        "kind": "class",
+        "name": "Product",
+        "isAbstract": false,
+        "stereotypes": [],
+        "attributes": [
+          {
+            "id": "a_prod_sku",
+            "name": "sku",
+            "type": "String",
+            "visibility": "private",
+            "multiplicity": "",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": false
+          },
+          {
+            "id": "a_prod_price",
+            "name": "listPrice",
+            "type": "Money",
+            "visibility": "private",
+            "multiplicity": "",
+            "defaultValue": "",
+            "isStatic": false,
+            "isDerived": false
+          },
+          {
+            "id": "a_prod_count",
+            "name": "instanceCount",
+            "type": "int",
+            "visibility": "private",
+            "multiplicity": "",
+            "defaultValue": "0",
+            "isStatic": true,
+            "isDerived": false
+          }
+        ],
+        "operations": [],
+        "owner": null
+      },
+      {
+        "id": "i_payable",
+        "kind": "interface",
+        "name": "Payable",
+        "stereotypes": [],
+        "operations": [
+          {
+            "id": "o_payable_due",
+            "name": "amountDue",
+            "returnType": "Money",
+            "visibility": "public",
+            "isStatic": false,
+            "isAbstract": false,
+            "parameters": []
+          }
+        ],
+        "owner": null
+      },
+      {
+        "id": "e_status",
+        "kind": "enumeration",
+        "name": "OrderStatus",
+        "stereotypes": [],
+        "literals": [
+          "DRAFT",
+          "PLACED",
+          "SHIPPED",
+          "CANCELLED"
+        ],
+        "owner": null
+      },
+      {
+        "id": "n_totals",
+        "kind": "comment",
+        "body": "total is derived from the order lines and excludes tax.",
+        "owner": null
+      }
+    ],
+    "relationships": [
+      {
+        "id": "r_lines",
+        "kind": "composition",
+        "name": "",
+        "ends": [
+          {
+            "ref": "c_order",
+            "role": "order",
+            "multiplicity": "1",
+            "visibility": "public",
+            "navigable": false
+          },
+          {
+            "ref": "c_orderline",
+            "role": "lines",
+            "multiplicity": "1..*",
+            "visibility": "private",
+            "navigable": true
+          }
+        ]
+      },
+      {
+        "id": "r_places",
+        "kind": "association",
+        "name": "places",
+        "ends": [
+          {
+            "ref": "c_customer",
+            "role": "customer",
+            "multiplicity": "1",
+            "visibility": "public",
+            "navigable": true
+          },
+          {
+            "ref": "c_order",
+            "role": "orders",
+            "multiplicity": "0..*",
+            "visibility": "public",
+            "navigable": true
+          }
+        ]
+      },
+      {
+        "id": "r_line_product",
+        "kind": "association",
+        "name": "",
+        "ends": [
+          {
+            "ref": "c_orderline",
+            "role": "",
+            "multiplicity": "0..*",
+            "visibility": "public",
+            "navigable": false
+          },
+          {
+            "ref": "c_product",
+            "role": "product",
+            "multiplicity": "1",
+            "visibility": "private",
+            "navigable": true
+          }
+        ]
+      },
+      {
+        "id": "r_bundle",
+        "kind": "aggregation",
+        "name": "bundles",
+        "ends": [
+          {
+            "ref": "c_product",
+            "role": "bundle",
+            "multiplicity": "0..1",
+            "visibility": "public",
+            "navigable": false
+          },
+          {
+            "ref": "c_product",
+            "role": "components",
+            "multiplicity": "0..*",
+            "visibility": "private",
+            "navigable": true
+          }
+        ]
+      },
+      {
+        "id": "r_customer_party",
+        "kind": "generalization",
+        "name": "",
+        "ends": [
+          {
+            "ref": "c_customer",
+            "role": "",
+            "multiplicity": "",
+            "visibility": "public",
+            "navigable": false
+          },
+          {
+            "ref": "c_party",
+            "role": "",
+            "multiplicity": "",
+            "visibility": "public",
+            "navigable": false
+          }
+        ]
+      },
+      {
+        "id": "r_order_payable",
+        "kind": "realization",
+        "name": "",
+        "ends": [
+          {
+            "ref": "c_order",
+            "role": "",
+            "multiplicity": "",
+            "visibility": "public",
+            "navigable": false
+          },
+          {
+            "ref": "i_payable",
+            "role": "",
+            "multiplicity": "",
+            "visibility": "public",
+            "navigable": false
+          }
+        ]
+      },
+      {
+        "id": "r_order_status",
+        "kind": "dependency",
+        "name": "uses",
+        "ends": [
+          {
+            "ref": "c_order",
+            "role": "",
+            "multiplicity": "",
+            "visibility": "public",
+            "navigable": false
+          },
+          {
+            "ref": "e_status",
+            "role": "",
+            "multiplicity": "",
+            "visibility": "public",
+            "navigable": false
+          }
+        ]
+      },
+      {
+        "id": "r_note_order",
+        "kind": "annotation",
+        "name": "",
+        "ends": [
+          {
+            "ref": "n_totals",
+            "role": "",
+            "multiplicity": "",
+            "visibility": "public",
+            "navigable": false
+          },
+          {
+            "ref": "c_order",
+            "role": "",
+            "multiplicity": "",
+            "visibility": "public",
+            "navigable": false
+          }
+        ]
+      }
+    ]
+  },
+  "diagrams": [
+    {
+      "id": "d_domain",
+      "name": "Domain",
+      "nodes": [
+        {
+          "id": "n_d1_sales",
+          "ref": "p_sales",
+          "x": 40,
+          "y": 60,
+          "w": 300,
+          "h": 340,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d1_order",
+          "ref": "c_order",
+          "x": 80,
+          "y": 110,
+          "w": 220,
+          "h": 130,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d1_line",
+          "ref": "c_orderline",
+          "x": 80,
+          "y": 270,
+          "w": 220,
+          "h": 110,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d1_party",
+          "ref": "c_party",
+          "x": 520,
+          "y": 40,
+          "w": 200,
+          "h": 90,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d1_customer",
+          "ref": "c_customer",
+          "x": 520,
+          "y": 180,
+          "w": 200,
+          "h": 90,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d1_product",
+          "ref": "c_product",
+          "x": 400,
+          "y": 440,
+          "w": 200,
+          "h": 100,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d1_payable",
+          "ref": "i_payable",
+          "x": 100,
+          "y": 460,
+          "w": 190,
+          "h": 70,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d1_status",
+          "ref": "e_status",
+          "x": 790,
+          "y": 330,
+          "w": 170,
+          "h": 110,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d1_note",
+          "ref": "n_totals",
+          "x": 380,
+          "y": 130,
+          "w": 180,
+          "h": 80,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "g_d1_lines",
+          "ref": "r_lines",
+          "waypoints": [],
+          "labels": {}
+        },
+        {
+          "id": "g_d1_places",
+          "ref": "r_places",
+          "waypoints": [],
+          "labels": {}
+        },
+        {
+          "id": "g_d1_lineprod",
+          "ref": "r_line_product",
+          "waypoints": [],
+          "labels": {}
+        },
+        {
+          "id": "g_d1_bundle",
+          "ref": "r_bundle",
+          "waypoints": [],
+          "labels": {}
+        },
+        {
+          "id": "g_d1_gen",
+          "ref": "r_customer_party",
+          "waypoints": [],
+          "labels": {}
+        },
+        {
+          "id": "g_d1_real",
+          "ref": "r_order_payable",
+          "waypoints": [],
+          "labels": {}
+        },
+        {
+          "id": "g_d1_status",
+          "ref": "r_order_status",
+          "waypoints": [
+            [
+              700,
+              175
+            ],
+            [
+              700,
+              385
+            ]
+          ],
+          "labels": {}
+        },
+        {
+          "id": "g_d1_note",
+          "ref": "r_note_order",
+          "waypoints": [],
+          "labels": {}
+        }
+      ]
+    },
+    {
+      "id": "d_lifecycle",
+      "name": "Order lifecycle",
+      "nodes": [
+        {
+          "id": "n_d2_order",
+          "ref": "c_order",
+          "x": 60,
+          "y": 60,
+          "w": 220,
+          "h": 130,
+          "show": {
+            "attributes": false,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d2_status",
+          "ref": "e_status",
+          "x": 400,
+          "y": 60,
+          "w": 170,
+          "h": 110,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        },
+        {
+          "id": "n_d2_note",
+          "ref": "n_totals",
+          "x": 60,
+          "y": 250,
+          "w": 220,
+          "h": 70,
+          "show": {
+            "attributes": true,
+            "operations": true
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "g_d2_status",
+          "ref": "r_order_status",
+          "waypoints": [],
+          "labels": {}
+        },
+        {
+          "id": "g_d2_note",
+          "ref": "r_note_order",
+          "waypoints": [],
+          "labels": {}
+        }
+      ]
+    }
+  ]
+}

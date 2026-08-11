@@ -1,0 +1,12 @@
+# The save format promises byte-identical round-trips: loading a document and downloading
+# it again produces the same bytes. Git normalising line endings on checkout would break
+# that promise on Windows — the editor writes LF, the working tree would hold CRLF, and
+# every save would look like a whole-file diff. So pin LF for everything textual.
+
+* text=auto eol=lf
+
+*.json  text eol=lf
+*.js    text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.md    text eol=lf

@@ -1,0 +1,186 @@
+# UMLOne
+
+A UML class diagram editor that runs in a web browser. Load, view, edit, and save class
+diagrams, with a semantic model (classes, associations) kept separate from the diagram
+that shows it (positions, sizes, bend points).
+
+## Running it
+
+Double-click `index.html`. That is the whole procedure.
+
+There is no build step, no package manager, no dev server, and nothing to download. The
+editor is plain JavaScript and SVG loaded with classic `<script>` tags, which is
+deliberate: ES modules are blocked by CORS over `file://`, so using them would have meant
+running a local server just to open the editor.
+
+To try it out, use **Open…** and pick `samples/example.uml.json`, then press **Fit**.
+
+### Tests
+
+Open `tests.html`. It runs the whole suite in that browser and prints a pass/fail list.
+Everything runs against the real DOM, which is the only place text measurement and SVG
+geometry mean anything.
+
+## Saving and opening
+
+- **Open…** or drag a `.uml.json` file onto the canvas.
+- **Download** writes the document to your Downloads folder.
+
+A page served from `file://` cannot write back to the file it was opened from, so there is
+no in-place save — every save is a fresh download. The button says *Download* rather than
+*Save* for that reason. The title bar shows `•` while there are unsaved changes, and
+closing the tab with unsaved work prompts first.
+
+Files are validated on load. Structural problems (a dangling relationship endpoint, a
+duplicate id, a version from a newer editor) refuse the load and say why. Recoverable
+problems (an unparseable multiplicity, an owner that is not a package, a diagram node for
+an element that no longer exists) are repaired, and the status line tells you how many
+repairs happened, with details in the browser console.
+
+## Controls
+
+| Action | How |
+| --- | --- |
+| Select | Click; Shift-click to add; drag on empty space to marquee |
+| Move | Drag a box. Dragging a package moves its contents with it |
+| Resize | Drag a handle on a selected box |
+| Create element | Pick a palette tool, then click the canvas |
+| Create relationship | Pick a relationship tool, click the source, then the target |
+| Add a bend to a line | Double-click the line |
+| Remove a bend | Double-click the bend handle |
+| Rename | Double-click a box, or edit in the inspector |
+| Precise placement | Hold Alt while dragging to bypass the 5px grid |
+| Nudge | Arrow keys; Shift+Arrow for a larger step |
+| Pan | Middle-drag, or Ctrl/Cmd-drag, or scroll |
+| Zoom | Ctrl/Cmd + scroll, or the toolbar buttons |
+| Undo / redo | Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z |
+| Select all | Ctrl/Cmd+A |
+| Delete from the model | Delete |
+| Remove from this diagram only | Shift+Delete |
+| Cancel the current tool | Escape |
+
+**Delete and Shift+Delete differ, and the difference matters.** Delete removes the element
+from the model, so it disappears from every diagram along with its relationships.
+Shift+Delete removes only the view — the element stays in the model and on other diagrams,
+and you can put it back from the inspector's *Not on this diagram* list.
+
+## File format
+
+One file is one document: a single semantic model plus any number of diagrams over it. The
+format is bespoke JSON rather than XMI. XMI is the actual standard, but it is verbose and
+version-fragmented, tools disagree on it in practice, and its layout half (Diagram
+Interchange) is the least-supported part of the ecosystem — while layout is a first-class
+requirement here. A converter can be added later without changing how the editor works
+internally.
+
+Files are written in a canonical form: fixed key order, two-space indent, unknown fields
+dropped. Loading a file and immediately downloading it produces identical bytes, so these
+files diff and merge sensibly in version control.
+
+```json
+{
+  "format": "umlone",
+  "version": 1,
+  "model": {
+    "elements": [
+      { "id": "c1", "kind": "class", "name": "Order",
+        "isAbstract": false, "stereotypes": ["entity"],
+        "attributes": [
+          { "id": "a1", "name": "total", "type": "Money",
+            "visibility": "private", "multiplicity": "", "defaultValue": "",
+            "isStatic": false, "isDerived": true }
+        ],
+        "operations": [
+          { "id": "o1", "name": "recalculate", "returnType": "void",
+            "visibility": "public", "isStatic": false, "isAbstract": false,
+            "parameters": [
+              { "name": "policy", "type": "TaxPolicy", "direction": "in" }
+            ] }
+        ],
+        "owner": "p1" }
+    ],
+    "relationships": [
+      { "id": "r1", "kind": "composition", "name": "",
+        "ends": [
+          { "ref": "c1", "role": "order", "multiplicity": "1",
+            "visibility": "public", "navigable": false },
+          { "ref": "c2", "role": "lines", "multiplicity": "1..*",
+            "visibility": "private", "navigable": true }
+        ] }
+    ]
+  },
+  "diagrams": [
+    { "id": "d1", "name": "Domain",
+      "nodes": [
+        { "id": "n1", "ref": "c1", "x": 80, "y": 110, "w": 220, "h": 130,
+          "show": { "attributes": true, "operations": true } }
+      ],
+      "edges": [
+        { "id": "g1", "ref": "r1", "waypoints": [[300, 190]], "labels": {} }
+      ] }
+  ]
+}
+```
+
+### Rules
+
+- **Element kinds**: `class`, `interface`, `enumeration`, `package`, `comment`. Which
+  compartments an element carries follows from its kind — a `comment` has `body` instead
+  of `name`, an `enumeration` has `literals`, an `interface` has no attributes.
+- **Relationship kinds**: `association`, `aggregation`, `composition`, `generalization`,
+  `realization`, `dependency`, `annotation`.
+- **`ends` is always `[source, target]`.** What that ordering means is per-kind: for
+  `generalization` the source is the subtype; for `realization` the source is the
+  implementation; for `composition` and `aggregation` the source is the whole; for
+  `annotation` the source is the note. Encoding every relationship the same way keeps
+  rendering and hit-testing generic.
+- Role, multiplicity, visibility, and navigability are only meaningful on `association`,
+  `aggregation`, and `composition`. They are preserved but not shown on the others, so
+  switching a relationship's kind and switching back loses nothing.
+- **Multiplicity grammar**: `1`, `0`, `*`, `0..1`, `1..*`, `2..7`, or empty. Inverted
+  ranges such as `5..2` are rejected.
+- Package containment lives in the model as `owner`, not in the geometry. A box that
+  merely overlaps a package on screen does not belong to it.
+- **An element appears at most once per diagram.** That invariant is what lets an edge
+  resolve its endpoints from element ids alone.
+- Diagram nodes and edges hold ids and geometry only — never copies of semantic data. Rename
+  a class and every diagram showing it updates.
+- An edge is only drawable on a diagram where both of its endpoint elements have nodes.
+
+## Source layout
+
+Script order in `index.html` is the dependency graph: each file uses only globals defined
+above it, and every file is an IIFE hanging one property off the `UMLOne` global.
+
+| File | Responsibility |
+| --- | --- |
+| `src/ns.js` | The namespace; ids, cloning, events, DOM helpers |
+| `src/geometry.js` | Rect and polyline math; clipping a line to a box border |
+| `src/measure.js` | SVG text measurement, cached |
+| `src/model.js` | The semantic half: elements, relationships, formatting |
+| `src/diagram.js` | The diagram half: nodes, edges, routing, integrity |
+| `src/validate.js` | Validation, normalization, canonical key order |
+| `src/io.js` | Serialize, deserialize, file read, download, drag-and-drop |
+| `src/render.js` | Layout and SVG drawing |
+| `src/commands.js` | The document store, undo stack, composite operations |
+| `src/interact.js` | Pointer and keyboard handling |
+| `src/panel.js` | The property inspector |
+| `src/app.js` | Wiring |
+
+Two design decisions worth knowing before changing anything:
+
+- **A document is plain JSON data, never a graph of class instances.** That is what makes
+  snapshot undo and lossless round-tripping cheap.
+- **Every mutation goes through `store.apply`**, which snapshots first. Undo is therefore
+  correct by construction rather than by remembering to add it each time. Continuous
+  gestures use `applyContinuous` so one drag is one undo step.
+
+## Current limits
+
+- Rendering is a full redraw per change. Fine at class-diagram sizes; it would need
+  incremental updates for thousands of elements.
+- Edges route as straight polylines through user-placed bends. There is no automatic
+  orthogonal routing or overlap avoidance.
+- No export to XMI, PlantUML, or an image. The JSON format is designed so an exporter can
+  be added without changing the internals.
+- No automatic layout — positions are always the user's.

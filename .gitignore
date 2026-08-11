@@ -1,0 +1,16 @@
+# There is no build tooling in this project on purpose — no node_modules, no dist, no
+# lockfiles. This list is therefore just OS and editor cruft.
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+*~
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Documents saved out of the editor while testing. Keep samples/ tracked, but a stray
+# download landing in the repo root should not be committed by accident.
+/*.uml.json
