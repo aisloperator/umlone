@@ -160,6 +160,25 @@
       setStatus('Downloaded ' + name);
     }
 
+    // The image is of one diagram, not of the document: what is exported is what is on
+    // screen. It does not count as saving — the document is still unsaved afterwards,
+    // because an SVG cannot be opened back into the editor.
+    function exportDiagram() {
+      inlineEdit.commit();
+      var diagram = store.currentDiagram();
+      if (!diagram) { return; }
+
+      var name = ns.exportSvg.fileName(diagram);
+      try {
+        ns.io.download(ns.exportSvg.serialize(store.doc, diagram), name, 'image/svg+xml');
+      } catch (e) {
+        setStatus('Could not export: ' + e.message, 'error');
+        window.console.error(e);
+        return;
+      }
+      setStatus('Exported ' + name);
+    }
+
     // --- construction --------------------------------------------------------
 
     panel = ns.panel.create({
@@ -229,6 +248,8 @@
     });
 
     document.getElementById('btn-download').addEventListener('click', downloadDocument);
+
+    document.getElementById('btn-export-svg').addEventListener('click', exportDiagram);
 
     document.getElementById('btn-undo').addEventListener('click', function () {
       inlineEdit.commit();

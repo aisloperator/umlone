@@ -285,7 +285,10 @@ select, input[type="text"], input[type="number"], textarea {
 
 /* --- diagram (SVG) -------------------------------------------------------- */
 
-#canvas text {
+/* Keyed to the class rather than to #canvas, because the SVG export draws the same
+   diagram into a detached element and reads its appearance back with getComputedStyle.
+   A rule the export cannot match is a rule the exported file loses. */
+.uml-diagram text {
   font-family: var(--diagram-font);
   fill: var(--text);
   /* Text is decoration for hit-testing purposes; the shape underneath takes the click. */

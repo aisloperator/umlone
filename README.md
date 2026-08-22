@@ -25,6 +25,14 @@ geometry mean anything.
 
 - **Open…** or drag a `.uml.json` file onto the canvas.
 - **Download** writes the document to your Downloads folder.
+- **Export SVG** writes the diagram you are looking at as a standalone image.
+
+The export is one diagram, not the document — what is on screen, cropped to the drawing
+with a small margin, with nothing that only exists to be clicked and no dependency on
+`styles.css`. Every colour, font, and stroke width is written onto the elements
+themselves, because a file that needs a stylesheet beside it is not an exported file. It
+is not a save: an SVG cannot be opened back into the editor, so the document is still
+unsaved afterwards.
 
 A page served from `file://` cannot write back to the file it was opened from, so there is
 no in-place save — every save is a fresh download. The button says *Download* rather than
@@ -236,6 +244,7 @@ above it, and every file is an IIFE hanging one property off the `UMLOne` global
 | `src/validate.js` | Validation, normalization, canonical key order |
 | `src/io.js` | Serialize, deserialize, file read, download, drag-and-drop |
 | `src/render.js` | Layout, line rectangles, and SVG drawing |
+| `src/export.js` | Standalone SVG for export and for printing |
 | `src/commands.js` | The document store, undo stack, composite operations |
 | `src/inlineedit.js` | In-place text editing on the diagram |
 | `src/interact.js` | Pointer and keyboard handling |
@@ -259,6 +268,6 @@ Three design decisions worth knowing before changing anything:
   incremental updates for thousands of elements.
 - Edges route as straight polylines through user-placed bends. There is no automatic
   orthogonal routing or overlap avoidance.
-- No export to XMI, PlantUML, or an image. The JSON format is designed so an exporter can
-  be added without changing the internals.
+- No export to XMI or PlantUML. The JSON format is designed so an exporter can be added
+  without changing the internals.
 - No automatic layout — positions are always the user's.

@@ -15,6 +15,8 @@
     <button type="button" id="btn-new" title="New document">New</button>
     <button type="button" id="btn-open" title="Open a .uml.json file">Open&hellip;</button>
     <button type="button" id="btn-download" title="Download this document">Download</button>
+    <button type="button" id="btn-export-svg"
+            title="Export the diagram you are looking at as an SVG image">Export SVG</button>
     <!-- The file input is the only way to read a local file without a server. -->
     <input type="file" id="file-input" accept=".json,.uml.json,application/json" hidden>
   </div>
@@ -71,7 +73,7 @@
   </nav>
 
   <main id="canvas-host">
-    <svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+    <svg id="canvas" class="uml-diagram" xmlns="http://www.w3.org/2000/svg"></svg>
     <div id="drop-overlay">Drop a <code>.uml.json</code> file to open it</div>
   </main>
 
@@ -91,6 +93,7 @@
 <script src="src/validate.js"></script>
 <script src="src/io.js"></script>
 <script src="src/render.js"></script>
+<script src="src/export.js"></script>
 <script src="src/commands.js"></script>
 <script src="src/inlineedit.js"></script>
 <script src="src/interact.js"></script>

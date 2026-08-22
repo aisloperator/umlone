@@ -8,12 +8,16 @@ Everything in this repo was written without ever being run: this machine has pyt
 and no JavaScript engine, so every claim about behaviour is reasoned from the code and
 the specs, not observed. That makes the first item the one that gates all the others.
 
-- [ ] **Open `tests.html`.** 197 tests, none of which have ever been executed. Expect all
+- [ ] **Open `tests.html`.** 214 tests, none of which have ever been executed. Expect all
       green; a failure here is as likely to be a bad test as a bad implementation.
 - [ ] **Open `index.html` from `file://`** in both Chrome and Firefox. Empty canvas,
       clean console. If it needs a server, the whole no-build-tooling premise is broken.
 - [ ] **Open `samples/example.uml.json`, press Fit.** 9 elements, 8 relationships,
       2 diagrams — every v1 feature appears somewhere in it.
+- [ ] **Export it as SVG and open the file on its own**, in a browser and in something
+      that is not a browser (an image viewer, Inkscape). Fonts and stroke widths are
+      written into the file, so what it looks like there is what it will look like
+      anywhere.
 - [ ] **Round-trip by hand.** Open the sample, press Download, diff the two files. Zero
       bytes of difference is the promise; canonical key order and the `.gitattributes`
       `eol=lf` pin exist to keep it.
@@ -64,8 +68,8 @@ and never settled.
 
 - [ ] Export to XMI or PlantUML. The JSON format was designed so a converter can be
       bolted on without touching the internals; nothing in the editor assumes it exists.
-- [ ] Export to SVG or PNG as an image, which is a different job from the format above
-      and probably wanted sooner.
+- [ ] Export to PNG. SVG export exists; a raster version means drawing the SVG into a
+      canvas, which is a different job with its own pitfalls (fonts, scale factor).
 - [ ] Orthogonal edge routing and overlap avoidance. Edges are straight polylines through
       user-placed bends.
 - [ ] Automatic layout. Positions are always the user's, which is the right default for a

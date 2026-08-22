@@ -61,8 +61,8 @@
     reader.readAsText(file);
   }
 
-  function download(text, fileName) {
-    var blob = new Blob([text], { type: 'application/json' });
+  function download(text, fileName, mimeType) {
+    var blob = new Blob([text], { type: mimeType || 'application/json' });
     var url = URL.createObjectURL(blob);
     var anchor = document.createElement('a');
 
@@ -78,14 +78,20 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 0);
   }
 
-  function suggestFileName(doc, currentName) {
-    if (currentName) { return currentName; }
-    var first = doc.diagrams && doc.diagrams[0];
-    var base = (first && first.name ? first.name : 'diagram')
+  // One rule for turning something's name into a file name, so the document download and
+  // the SVG export cannot drift into naming the same diagram two different things.
+  function slugify(name, fallback) {
+    var base = String(name || '')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    return (base || 'diagram') + FILE_EXTENSION;
+    return base || fallback || 'untitled';
+  }
+
+  function suggestFileName(doc, currentName) {
+    if (currentName) { return currentName; }
+    var first = doc.diagrams && doc.diagrams[0];
+    return slugify(first && first.name, 'diagram') + FILE_EXTENSION;
   }
 
   // Drag-and-drop onto the canvas. dragover must be cancelled or the browser navigates to
@@ -132,6 +138,7 @@
     deserialize: deserialize,
     readFile: readFile,
     download: download,
+    slugify: slugify,
     suggestFileName: suggestFileName,
     installDropTarget: installDropTarget
   };
