@@ -9,7 +9,13 @@
 <body>
 
 <header id="toolbar">
-  <span class="brand">UMLOne</span>
+  <div class="brand">
+    <span class="brand-name">UMLOne</span>
+    <!-- rel goes with target="_blank": without it the new tab can reach back through
+         window.opener. -->
+    <a class="brand-by" href="https://www.aisloperator.com/"
+       target="_blank" rel="noopener noreferrer">AI Sloperator</a>
+  </div>
 
   <div class="group">
     <button type="button" id="btn-new" title="New document">New</button>

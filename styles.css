@@ -50,9 +50,27 @@ body {
 }
 
 #toolbar .brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+#toolbar .brand-name {
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--accent);
+}
+
+#toolbar .brand-by {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+#toolbar .brand-by:hover,
+#toolbar .brand-by:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 #toolbar .group {
