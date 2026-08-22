@@ -333,6 +333,42 @@
     });
   }
 
+  // The whole rearrangement is one undo step, and no history entry at all when the layout
+  // agrees with where everything already is — pressing the button twice should not leave
+  // two things to undo.
+  function autoLayout(store, diagramId) {
+    return store.apply('auto layout', function (doc) {
+      var diagram = ns.diagram.findDiagram(doc, diagramId);
+      if (!diagram || !diagram.nodes.length) { return false; }
+
+      var placements = ns.layout.arrange(doc, diagram);
+      var changed = false;
+
+      diagram.nodes.forEach(function (node) {
+        var at = placements[node.id];
+        if (!at) { return; }
+        if (node.x !== at.x || node.y !== at.y || node.w !== at.w || node.h !== at.h) {
+          changed = true;
+        }
+        node.x = at.x;
+        node.y = at.y;
+        node.w = at.w;
+        node.h = at.h;
+      });
+
+      // Bends were put where they are against the old positions. Keeping them would leave
+      // lines looping out to nowhere and back.
+      diagram.edges.forEach(function (edge) {
+        if (edge.waypoints && edge.waypoints.length) {
+          edge.waypoints = [];
+          changed = true;
+        }
+      });
+
+      return changed;
+    });
+  }
+
   function addDiagram(store, name) {
     var id = null;
     store.apply('add diagram', function (doc) {
@@ -378,6 +414,7 @@
     deleteFromModel: deleteFromModel,
     removeFromDiagram: removeFromDiagram,
     sizeToFit: sizeToFit,
+    autoLayout: autoLayout,
     addDiagram: addDiagram,
     removeDiagram: removeDiagram,
     showOnDiagram: showOnDiagram,

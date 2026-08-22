@@ -70,6 +70,7 @@ repairs happened, with details in the browser console.
 | Zoom | Ctrl/Cmd + scroll, or the toolbar buttons |
 | Back to 100% | The **1:1** button, or Ctrl/Cmd+0 |
 | Show the whole diagram | The **Fit** button. It shrinks to fit and stops at 100% — it never magnifies |
+| Arrange the diagram | The **Auto layout** button. One undo step |
 | Print this diagram | Ctrl/Cmd+P, or the toolbar button |
 | Undo / redo | Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z |
 | Select all | Ctrl/Cmd+A |
@@ -154,6 +155,35 @@ double-click the element under the cursor is destroyed and replaced four times. 
 only fires when both clicks share a target, and Firefox holds to that strictly, so the
 event never arrived at all. Reading the target during `pointerdown`, before anything can
 redraw, does not depend on the browser's click bookkeeping surviving a rebuild.
+
+## Automatic layout
+
+**Auto layout** rearranges the diagram you are looking at. It is one undo step, and
+pressing it twice in a row does nothing the second time.
+
+The arrangement is layered, in the Sugiyama shape. Class diagrams have one strong
+convention — a supertype is drawn above its subtypes — and generalization and realization
+are the only relationships that carry it, so those two decide the rows. Everything else
+(associations, aggregation, composition, dependencies, note links) only pulls related
+boxes towards each other within a row. Treating every relationship as a hierarchy would
+tip associations on their side and draw inheritance where there is none.
+
+- A box goes below its *deepest* supertype, so a chain never doubles back.
+- Boxes that inheritance says nothing about sit beside whatever they are related to;
+  a group joined only by associations spreads over rows from its busiest member, rather
+  than forming one long line.
+- Order within a row comes from barycentre sweeps — the standard heuristic for reducing
+  crossings, since the exact problem is NP-hard.
+- Packages nest. A package's contents are arranged on their own, the package is sized to
+  hold the result, and it then takes part in the layout around it as a single box. An edge
+  that crosses a package boundary pulls on the package.
+- Parts of a diagram that are not connected to each other are packed side by side,
+  biggest first, wrapping into rows.
+- Bends are dropped: they were placed against the old positions.
+
+What it is not: optimal. There is no orthogonal routing, no overlap avoidance for edges,
+and no attempt to preserve the shape you already had — it is a fresh arrangement, which is
+why it is a button rather than something that happens as you edit.
 
 ## File format
 
@@ -253,6 +283,7 @@ above it, and every file is an IIFE hanging one property off the `UMLOne` global
 | `src/validate.js` | Validation, normalization, canonical key order |
 | `src/io.js` | Serialize, deserialize, file read, download, drag-and-drop |
 | `src/render.js` | Layout, line rectangles, and SVG drawing |
+| `src/layout.js` | Automatic arrangement: layering, ordering, packing |
 | `src/export.js` | Standalone SVG for export and for printing |
 | `src/commands.js` | The document store, undo stack, composite operations |
 | `src/inlineedit.js` | In-place text editing on the diagram |
@@ -279,4 +310,5 @@ Three design decisions worth knowing before changing anything:
   orthogonal routing or overlap avoidance.
 - No export to XMI or PlantUML. The JSON format is designed so an exporter can be added
   without changing the internals.
-- No automatic layout — positions are always the user's.
+- Automatic layout is a button, not a mode. Nothing rearranges itself while you edit, and
+  the arrangement does not try to preserve the shape you already had.

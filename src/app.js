@@ -275,6 +275,23 @@
 
     document.getElementById('btn-print').addEventListener('click', printDiagram);
 
+    document.getElementById('btn-layout').addEventListener('click', function () {
+      inlineEdit.commit();
+      var diagram = store.currentDiagram();
+      if (!diagram || !diagram.nodes.length) { return; }
+
+      if (!ns.commands.autoLayout(store, store.currentDiagramId)) {
+        setStatus('Already arranged.');
+        return;
+      }
+
+      // Everything has moved, so what was on screen probably is not any more.
+      interactions.fitToContent();
+      refreshPanel();
+      setStatus('Arranged ' + diagram.nodes.length +
+                (diagram.nodes.length === 1 ? ' box.' : ' boxes.'));
+    });
+
     document.getElementById('btn-undo').addEventListener('click', function () {
       inlineEdit.commit();
       store.undo();
