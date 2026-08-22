@@ -63,4 +63,81 @@
     T.eq(isDouble(down, afterDrag), false,
          'no separate drag bookkeeping is needed; distance covers it');
   });
+
+  // --- zoom ------------------------------------------------------------------
+
+  T.group('zoom');
+
+  // A real element with real layout: the zoom maths reads getBoundingClientRect, which is
+  // zero-sized for anything the browser has not laid out.
+  function zoomSetup() {
+    var host = document.createElement('div');
+    host.style.position = 'relative';
+    host.style.width = '600px';
+    host.style.height = '400px';
+    document.getElementById('sandbox').appendChild(host);
+
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.width = '600px';
+    svg.style.height = '400px';
+    host.appendChild(svg);
+
+    var interactions = ns.interact.create({
+      svg: svg,
+      host: host,
+      store: new ns.commands.Store(ns.testFixture()),
+      onRender: function () {}
+    });
+
+    return interactions;
+  }
+
+  // What the middle of the view is looking at, in diagram coordinates.
+  function centreOfView(interactions) {
+    var view = interactions.state.viewport;
+    return {
+      x: (300 - view.x) / view.scale,
+      y: (200 - view.y) / view.scale
+    };
+  }
+
+  T.test('zoomTo(1) returns to 100% from either direction', function () {
+    var a = zoomSetup();
+    a.zoomBy(2.5);
+    a.zoomTo(1);
+    T.eq(a.state.viewport.scale, 1);
+
+    var b = zoomSetup();
+    b.zoomBy(1 / 2.5);
+    b.zoomTo(1);
+    T.eq(b.state.viewport.scale, 1);
+  });
+
+  T.test('resetting to 100% keeps the middle of the view on the same spot', function () {
+    var interactions = zoomSetup();
+    interactions.zoomBy(2);
+    var before = centreOfView(interactions);
+    interactions.zoomTo(1);
+    var after = centreOfView(interactions);
+
+    T.near(after.x, before.x, 0.001, 'the view must not jump sideways on reset');
+    T.near(after.y, before.y, 0.001);
+  });
+
+  T.test('zoomTo is clamped like every other zoom', function () {
+    var interactions = zoomSetup();
+    interactions.zoomTo(1000);
+    T.eq(interactions.state.viewport.scale <= 4, true);
+    interactions.zoomTo(0.0001);
+    T.eq(interactions.state.viewport.scale >= 0.2, true);
+  });
+
+  T.test('Ctrl+0 resets the zoom', function () {
+    var interactions = zoomSetup();
+    interactions.zoomBy(2);
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: '0', ctrlKey: true, bubbles: true, cancelable: true
+    }));
+    T.eq(interactions.state.viewport.scale, 1);
+  });
 })(UMLOne);

@@ -90,6 +90,8 @@ select, input[type="text"], input[type="number"], textarea {
   padding: 3px 5px;
 }
 
+/* A readout, not a control — the way back to 100% is the 1:1 button beside it. Tabular
+   figures so the toolbar does not shuffle as the number changes width. */
 #zoom-level {
   min-width: 44px;
   text-align: center;

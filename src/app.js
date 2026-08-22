@@ -254,6 +254,10 @@
       interactions.fitToContent();
     });
 
+    document.getElementById('btn-zoom-reset').addEventListener('click', function () {
+      interactions.zoomTo(1);
+    });
+
     // --- diagram management --------------------------------------------------
 
     diagramSelect.addEventListener('change', function () {

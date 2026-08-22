@@ -778,9 +778,15 @@
       onRender();
     }
 
-    function zoomBy(factor) {
+    // Both toolbar zooms work from the middle of the view, since there is no cursor
+    // position to anchor to.
+    function zoomTo(scale) {
       var rect = svg.getBoundingClientRect();
-      applyZoom(state.viewport.scale * factor, rect.width / 2, rect.height / 2);
+      applyZoom(scale, rect.width / 2, rect.height / 2);
+    }
+
+    function zoomBy(factor) {
+      zoomTo(state.viewport.scale * factor);
     }
 
     function fitToContent() {
@@ -840,6 +846,14 @@
         pruneSelection();
         onRender();
         announceSelection();
+        return;
+      }
+
+      // Ctrl/Cmd+0 is "actual size" in every browser and most editors, so it means the
+      // same here rather than something UMLOne-specific.
+      if (mod && evt.key === '0') {
+        evt.preventDefault();
+        zoomTo(1);
         return;
       }
 
@@ -942,6 +956,7 @@
       pruneSelection: pruneSelection,
       deleteSelection: deleteSelection,
       zoomBy: zoomBy,
+      zoomTo: zoomTo,
       fitToContent: fitToContent,
       announceSelection: announceSelection
     };
