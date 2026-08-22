@@ -479,9 +479,19 @@
 
     // Clip to the box so shrinking a node hides overflow instead of letting text spill
     // across the diagram.
+    //
+    // A pixel wider than the box on every side, because the outline is drawn inside this
+    // clip too. A stroke straddles the path it follows, so a clip at exactly the box
+    // bounds cuts away the outer half of every border — leaving half a pixel of ink whose
+    // visibility then depends on where it happens to land on the pixel grid, which is how
+    // a box ends up with one edge grey and another missing entirely. One pixel of margin
+    // also covers the 2px stroke a selected box gets, and lets through a pixel of text
+    // overflow that nothing can notice.
     var clipId = 'clip-' + node.id;
     var clip = ns.svg('clipPath', { id: clipId }, group);
-    ns.svg('rect', { x: 0, y: 0, width: node.w, height: node.h }, clip);
+    ns.svg('rect', {
+      x: -1, y: -1, width: node.w + 2, height: node.h + 2
+    }, clip);
 
     var inner = ns.svg('g', { 'clip-path': 'url(#' + clipId + ')' }, group);
     var info = layout(doc, element, node);

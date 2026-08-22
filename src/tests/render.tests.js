@@ -166,6 +166,31 @@
     T.eq(Object.keys(unique).length, ids.length, 'duplicate clipPath id would misclip');
   });
 
+  // The outline is drawn inside this clip, and a stroke straddles the path it follows, so
+  // a clip at exactly the box bounds keeps only the inner half of every border. What
+  // survives is half a pixel of ink that renders — or does not — according to where it
+  // lands on the pixel grid, which showed up as a box with one edge grey and another one
+  // gone after the viewport moved.
+  T.test('the clip leaves room for the border stroke', function () {
+    var doc = fixture();
+    var svg = drawFixture(doc);
+    var node = ns.diagram.nodeForElement(doc.diagrams[0], 'c1');
+
+    var rect = svg.querySelector('#clip-' + node.id + ' rect');
+    T.ok(rect, 'every node clips its contents');
+
+    var x = parseFloat(rect.getAttribute('x'));
+    var y = parseFloat(rect.getAttribute('y'));
+    var w = parseFloat(rect.getAttribute('width'));
+    var h = parseFloat(rect.getAttribute('height'));
+
+    // A selected box strokes at 2px, so half of it is a whole pixel outside the bounds.
+    T.eq(x <= -1, true, 'the left border would be shaved off');
+    T.eq(y <= -1, true, 'the top border would be shaved off');
+    T.eq(x + w >= node.w + 1, true, 'the right border would be shaved off');
+    T.eq(y + h >= node.h + 1, true, 'the bottom border would be shaved off');
+  });
+
   T.test('a realization is dashed and a composition is not', function () {
     var doc = fixture();
     var svg = drawFixture(doc);
