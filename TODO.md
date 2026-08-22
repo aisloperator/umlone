@@ -22,11 +22,11 @@ the specs, not observed. That makes the first item the one that gates all the ot
       Print stylesheets are the least portable thing in a browser and this one has never
       been seen. Check that a diagram wider than the page shrinks to fit rather than
       being cut in half, and that nothing of the editor's chrome appears.
-- [ ] **Press Auto layout on `samples/example.uml.json`** and look at the result. The
+- [ ] **Press Layout on `samples/example.uml.json`** and look at the result. The
       algorithm is reasoned about, not seen: check that the package holds its members,
       that inheritance reads top to bottom, and that nothing overlaps. Undo must put it
       all back in one step.
-- [ ] **Round-trip by hand.** Open the sample, press Download, diff the two files. Zero
+- [ ] **Round-trip by hand.** Open the sample, press Save, diff the two files. Zero
       bytes of difference is the promise; canonical key order and the `.gitattributes`
       `eol=lf` pin exist to keep it.
 - [ ] **Exercise the `crypto.randomUUID` fallback**, rather than trusting that it is
@@ -54,7 +54,7 @@ The plan's own acceptance run, never performed end to end:
 
 - [ ] Create classes, draw one relationship of each of the seven kinds, set roles and
       multiplicities, move and resize, put one class on two diagrams, undo everything,
-      download, reopen the download, and confirm it matches what was on screen.
+      save, reopen the saved file, and confirm it matches what was on screen.
 
 ## Judgment calls left open
 

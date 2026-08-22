@@ -20,7 +20,7 @@ deliberate: ES modules are blocked by CORS over `file://`, so using them would h
 running a local server just to open the editor — and the hosted copy is the same files,
 not a build of them.
 
-To try it out, use **Open…** and pick `samples/example.uml.json`, then press **Fit**.
+To try it out, press **Open** and pick `samples/example.uml.json`, then press **Fit**.
 
 ### Tests
 
@@ -30,9 +30,9 @@ the real DOM, which is the only place text measurement and SVG geometry mean any
 
 ## Saving and opening
 
-- **Open…** or drag a `.uml.json` file onto the canvas.
-- **Download** writes the document to your Downloads folder.
-- **Export SVG** writes the diagram you are looking at as a standalone image.
+- **Open**, or drag a `.uml.json` file onto the canvas.
+- **Save** writes the document to your Downloads folder.
+- **SVG** writes the diagram you are looking at as a standalone image.
 - **Print** puts that same image on paper, with the diagram's name above it.
 
 The export is one diagram, not the document — what is on screen, cropped to the drawing
@@ -48,10 +48,10 @@ screenshot of the editor: the print stylesheet hides the chrome, and the page is
 `beforeprint` rather than only by the button, since a hidden editor plus an empty print
 area is a blank sheet.
 
-A page served from `file://` cannot write back to the file it was opened from, so there is
-no in-place save — every save is a fresh download. The button says *Download* rather than
-*Save* for that reason. The title bar shows `•` while there are unsaved changes, and
-closing the tab with unsaved work prompts first.
+A browser cannot write back to the file you opened, so there is no in-place save: **Save**
+downloads a fresh copy every time, and the status line says *Downloaded* rather than
+*Saved* so it is clear where the file went. The title bar shows `•` while there are
+unsaved changes, and closing the tab with unsaved work prompts first.
 
 Files are validated on load. Structural problems (a dangling relationship endpoint, a
 duplicate id, a version from a newer editor) refuse the load and say why. Recoverable
@@ -77,7 +77,7 @@ repairs happened, with details in the browser console.
 | Zoom | Ctrl/Cmd + scroll, or the toolbar buttons |
 | Back to 100% | The **1:1** button, or Ctrl/Cmd+0 |
 | Show the whole diagram | The **Fit** button. It shrinks to fit and stops at 100% — it never magnifies |
-| Arrange the diagram | The **Auto layout** button. One undo step |
+| Arrange the diagram | The **Layout** button. One undo step |
 | Print this diagram | Ctrl/Cmd+P, or the toolbar button |
 | Undo / redo | Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z |
 | Select all | Ctrl/Cmd+A |
@@ -165,8 +165,8 @@ redraw, does not depend on the browser's click bookkeeping surviving a rebuild.
 
 ## Automatic layout
 
-**Auto layout** rearranges the diagram you are looking at. It is one undo step, and
-pressing it twice in a row does nothing the second time.
+**Layout** rearranges the diagram you are looking at. It is one undo step, and pressing it
+twice in a row does nothing the second time.
 
 The arrangement is layered, in the Sugiyama shape. Class diagrams have one strong
 convention — a supertype is drawn above its subtypes — and generalization and realization
