@@ -14,6 +14,7 @@
     var fileInput = document.getElementById('file-input');
     var zoomLabel = document.getElementById('zoom-level');
     var paletteHint = document.getElementById('palette-hint');
+    var printArea = document.getElementById('print-area');
 
     var store = new ns.commands.Store(starterDocument());
     var interactions = null;
@@ -179,6 +180,27 @@
       setStatus('Exported ' + name);
     }
 
+    // Printing goes through the same builder as the export, so what comes out of the
+    // printer is what comes out of the file.
+    //
+    // Filling the print area happens on `beforeprint` too, not only on the button: the
+    // print stylesheet hides the editor, so a Ctrl+P or a File > Print that found the
+    // area empty would produce a blank sheet, which is a worse outcome than not
+    // supporting them at all.
+    function preparePrint() {
+      // Half-typed text is text: whatever is in an open field belongs on the page.
+      inlineEdit.commit();
+      var diagram = store.currentDiagram();
+      if (!diagram) { return false; }
+      ns.exportSvg.toPrintArea(printArea, store.doc, diagram);
+      return true;
+    }
+
+    function printDiagram() {
+      if (!preparePrint()) { return; }
+      window.print();
+    }
+
     // --- construction --------------------------------------------------------
 
     panel = ns.panel.create({
@@ -250,6 +272,8 @@
     document.getElementById('btn-download').addEventListener('click', downloadDocument);
 
     document.getElementById('btn-export-svg').addEventListener('click', exportDiagram);
+
+    document.getElementById('btn-print').addEventListener('click', printDiagram);
 
     document.getElementById('btn-undo').addEventListener('click', function () {
       inlineEdit.commit();
@@ -387,6 +411,22 @@
       e.returnValue = '';
       return '';
     });
+
+    // Ctrl/Cmd+P should print the diagram, not a screenshot of the editor. Handled here
+    // rather than in interact.js because the browser's own print shortcut has to be taken
+    // away from it even while a text field has the focus.
+    document.addEventListener('keydown', function (evt) {
+      if (!(evt.ctrlKey || evt.metaKey) || !evt.key) { return; }
+      if (evt.key.toLowerCase() !== 'p') { return; }
+      evt.preventDefault();
+      printDiagram();
+    });
+
+    window.addEventListener('beforeprint', preparePrint);
+
+    // Holding on to a copy of the diagram after printing serves nothing, and a stale one
+    // would be what the next Ctrl+P showed if anything went wrong refilling it.
+    window.addEventListener('afterprint', function () { ns.clear(printArea); });
 
     window.addEventListener('resize', render);
 

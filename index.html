@@ -17,6 +17,8 @@
     <button type="button" id="btn-download" title="Download this document">Download</button>
     <button type="button" id="btn-export-svg"
             title="Export the diagram you are looking at as an SVG image">Export SVG</button>
+    <button type="button" id="btn-print"
+            title="Print the diagram you are looking at (Ctrl+P)">Print</button>
     <!-- The file input is the only way to read a local file without a server. -->
     <input type="file" id="file-input" accept=".json,.uml.json,application/json" hidden>
   </div>
@@ -83,6 +85,11 @@
   </aside>
 
 </div>
+
+<!-- Filled at the moment of printing and hidden the rest of the time. It exists in the
+     page rather than in a popup window because a popup opened from file:// cannot be
+     given a stylesheet, and would be blocked as often as not. -->
+<div id="print-area" aria-hidden="true"></div>
 
 <!-- Script order is the dependency graph: each file only uses globals defined above it. -->
 <script src="src/ns.js"></script>

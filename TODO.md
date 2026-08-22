@@ -8,7 +8,7 @@ Everything in this repo was written without ever being run: this machine has pyt
 and no JavaScript engine, so every claim about behaviour is reasoned from the code and
 the specs, not observed. That makes the first item the one that gates all the others.
 
-- [ ] **Open `tests.html`.** 214 tests, none of which have ever been executed. Expect all
+- [ ] **Open `tests.html`.** 218 tests, none of which have ever been executed. Expect all
       green; a failure here is as likely to be a bad test as a bad implementation.
 - [ ] **Open `index.html` from `file://`** in both Chrome and Firefox. Empty canvas,
       clean console. If it needs a server, the whole no-build-tooling premise is broken.
@@ -18,6 +18,10 @@ the specs, not observed. That makes the first item the one that gates all the ot
       that is not a browser (an image viewer, Inkscape). Fonts and stroke widths are
       written into the file, so what it looks like there is what it will look like
       anywhere.
+- [ ] **Print a diagram**, in Chrome and in Firefox, from the button and from Ctrl+P.
+      Print stylesheets are the least portable thing in a browser and this one has never
+      been seen. Check that a diagram wider than the page shrinks to fit rather than
+      being cut in half, and that nothing of the editor's chrome appears.
 - [ ] **Round-trip by hand.** Open the sample, press Download, diff the two files. Zero
       bytes of difference is the promise; canonical key order and the `.gitattributes`
       `eol=lf` pin exist to keep it.

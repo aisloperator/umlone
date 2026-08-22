@@ -173,6 +173,42 @@
     T.eq(JSON.stringify(d), before);
   });
 
+  // --- printing --------------------------------------------------------------
+
+  T.test('the print area gets the diagram name and the drawing', function () {
+    var d = doc();
+    var area = document.createElement('div');
+    ns.exportSvg.toPrintArea(area, d, d.diagrams[0]);
+
+    T.eq(area.querySelectorAll('svg').length, 1);
+    T.eq(area.querySelector('.print-title').textContent, d.diagrams[0].name);
+    T.eq(area.firstChild.className, 'print-title', 'the name should come before the drawing');
+  });
+
+  T.test('printing twice does not print two diagrams', function () {
+    var d = doc();
+    var area = document.createElement('div');
+    ns.exportSvg.toPrintArea(area, d, d.diagrams[0]);
+    ns.exportSvg.toPrintArea(area, d, d.diagrams[1] || d.diagrams[0]);
+
+    T.eq(area.querySelectorAll('svg').length, 1);
+  });
+
+  T.test('printing what is on screen means the diagram asked for', function () {
+    var d = doc();
+    if (d.diagrams.length < 2) { return; }
+    var area = document.createElement('div');
+    ns.exportSvg.toPrintArea(area, d, d.diagrams[1]);
+    T.eq(area.querySelector('.print-title').textContent, d.diagrams[1].name);
+  });
+
+  T.test('with no diagram there is nothing to print', function () {
+    var area = document.createElement('div');
+    area.appendChild(document.createElement('span'));
+    ns.exportSvg.toPrintArea(area, doc(), null);
+    T.eq(area.childNodes.length, 0, 'a stale drawing would print instead');
+  });
+
   T.test('a file name is made from the diagram name', function () {
     T.eq(ns.exportSvg.fileName({ name: 'Domain Model' }), 'domain-model.svg');
     T.eq(ns.exportSvg.fileName({ name: '' }), 'diagram.svg');

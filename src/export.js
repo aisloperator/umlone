@@ -179,6 +179,19 @@
     return ns.io.slugify(diagram && diagram.name, 'diagram') + '.svg';
   }
 
+  // What goes on paper: the diagram's name, then the drawing. Built by the same code as
+  // the file export, so what prints is what exports — and it carries its own appearance,
+  // which matters twice over here, since a print stylesheet is a poor place to discover
+  // that the diagram came out as black boxes.
+  function toPrintArea(container, doc, diagram) {
+    ns.clear(container);
+    if (!diagram) { return container; }
+
+    ns.html('div', { 'class': 'print-title', text: diagram.name }, container);
+    container.appendChild(build(doc, diagram));
+    return container;
+  }
+
   ns.exportSvg = {
     MARGIN: MARGIN,
     PAINT: PAINT,
@@ -186,6 +199,7 @@
     viewBoxFor: viewBoxFor,
     build: build,
     serialize: serialize,
-    fileName: fileName
+    fileName: fileName,
+    toPrintArea: toPrintArea
   };
 })(UMLOne);

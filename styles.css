@@ -433,3 +433,42 @@ textarea.inline-editor {
 }
 
 .inline-editor::selection { background: var(--accent-soft); }
+
+/* --- printing ------------------------------------------------------------- */
+
+/* Empty and hidden until something is printed. It is filled at `beforeprint` as well as
+   by the Print button, so Ctrl+P and the browser's own menu print the diagram rather than
+   a blank sheet. */
+#print-area { display: none; }
+
+@media print {
+  /* The editor's shell is built to fill a window exactly once and never scroll. On paper
+     that means one clipped screenful, so the layout is handed back to the flow. */
+  html, body {
+    height: auto;
+    overflow: visible;
+    display: block;
+    background: #fff;
+  }
+
+  #toolbar, #workspace { display: none !important; }
+
+  #print-area { display: block; }
+
+  #print-area .print-title {
+    font-size: 12pt;
+    font-weight: 600;
+    margin: 0 0 8pt;
+  }
+
+  /* Its own size, shrunk to the page when it does not fit. The viewBox does the fitting,
+     so the drawing keeps its proportions either way. */
+  #print-area svg {
+    display: block;
+    max-width: 100%;
+    max-height: 92vh;
+    height: auto;
+  }
+
+  @page { margin: 12mm; }
+}

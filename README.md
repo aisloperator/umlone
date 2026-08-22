@@ -26,6 +26,7 @@ geometry mean anything.
 - **Open…** or drag a `.uml.json` file onto the canvas.
 - **Download** writes the document to your Downloads folder.
 - **Export SVG** writes the diagram you are looking at as a standalone image.
+- **Print** puts that same image on paper, with the diagram's name above it.
 
 The export is one diagram, not the document — what is on screen, cropped to the drawing
 with a small margin, with nothing that only exists to be clicked and no dependency on
@@ -33,6 +34,12 @@ with a small margin, with nothing that only exists to be clicked and no dependen
 themselves, because a file that needs a stylesheet beside it is not an exported file. It
 is not a save: an SVG cannot be opened back into the editor, so the document is still
 unsaved afterwards.
+
+Printing uses the same builder, so what the printer produces is what the file would have
+contained. Ctrl/Cmd+P and the browser's own print menu print the diagram too, not a
+screenshot of the editor: the print stylesheet hides the chrome, and the page is filled on
+`beforeprint` rather than only by the button, since a hidden editor plus an empty print
+area is a blank sheet.
 
 A page served from `file://` cannot write back to the file it was opened from, so there is
 no in-place save — every save is a fresh download. The button says *Download* rather than
@@ -62,6 +69,7 @@ repairs happened, with details in the browser console.
 | Pan | Middle-drag, or Ctrl/Cmd-drag, or scroll |
 | Zoom | Ctrl/Cmd + scroll, or the toolbar buttons |
 | Back to 100% | The **1:1** button, or Ctrl/Cmd+0 |
+| Print this diagram | Ctrl/Cmd+P, or the toolbar button |
 | Undo / redo | Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z |
 | Select all | Ctrl/Cmd+A |
 | Delete from the model | Delete |
