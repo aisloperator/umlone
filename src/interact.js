@@ -16,6 +16,12 @@
   var MIN_SCALE = 0.2;
   var MAX_SCALE = 4;
 
+  // Fit shrinks, and stops at actual size. Magnifying a small diagram until it fills the
+  // window makes it no more legible — the text was already readable — while making it look
+  // like a zoom the user did not ask for, and leaving them to work out how to get back.
+  // Anyone who wants a two-class diagram bigger still has the + button.
+  var FIT_MAX_SCALE = 1;
+
   // Double-clicks are recognised here rather than left to the browser's `dblclick`.
   //
   // Drawing is a full rebuild: every render calls ns.clear(svg) and recreates every
@@ -831,7 +837,7 @@
       var scale = Math.min(
         (rect.width - margin * 2) / box.w,
         (rect.height - margin * 2) / box.h,
-        MAX_SCALE
+        FIT_MAX_SCALE
       );
       scale = Math.max(MIN_SCALE, scale);
 
@@ -989,6 +995,9 @@
   ns.interact = {
     create: create,
     GRID: GRID,
+    MIN_SCALE: MIN_SCALE,
+    MAX_SCALE: MAX_SCALE,
+    FIT_MAX_SCALE: FIT_MAX_SCALE,
     DOUBLE_CLICK_MS: DOUBLE_CLICK_MS,
     DOUBLE_CLICK_SLOP: DOUBLE_CLICK_SLOP,
     isDoublePress: isDoublePress,

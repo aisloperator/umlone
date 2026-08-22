@@ -70,7 +70,7 @@
 
   // A real element with real layout: the zoom maths reads getBoundingClientRect, which is
   // zero-sized for anything the browser has not laid out.
-  function zoomSetup() {
+  function zoomSetup(doc) {
     var host = document.createElement('div');
     host.style.position = 'relative';
     host.style.width = '600px';
@@ -85,21 +85,66 @@
     var interactions = ns.interact.create({
       svg: svg,
       host: host,
-      store: new ns.commands.Store(ns.testFixture()),
+      store: new ns.commands.Store(doc || ns.testFixture()),
       onRender: function () {}
     });
 
+    // Hung on the object so the assertions can measure the same element the zoom maths
+    // does, rather than assume the browser laid it out at exactly the size asked for.
+    interactions.svgForTests = svg;
     return interactions;
   }
 
   // What the middle of the view is looking at, in diagram coordinates.
   function centreOfView(interactions) {
     var view = interactions.state.viewport;
+    var rect = interactions.svgForTests.getBoundingClientRect();
     return {
-      x: (300 - view.x) / view.scale,
-      y: (200 - view.y) / view.scale
+      x: (rect.width / 2 - view.x) / view.scale,
+      y: (rect.height / 2 - view.y) / view.scale
     };
   }
+
+  // One node of a known size, so what Fit should decide is arithmetic rather than a guess
+  // about the fixture.
+  function oneNode(w, h) {
+    var doc = ns.testFixture();
+    var diagram = doc.diagrams[0];
+    diagram.edges = [];
+    diagram.nodes = [diagram.nodes[0]];
+    diagram.nodes[0].x = 0;
+    diagram.nodes[0].y = 0;
+    diagram.nodes[0].w = w;
+    diagram.nodes[0].h = h;
+    return doc;
+  }
+
+  T.test('Fit shrinks what does not fit', function () {
+    var interactions = zoomSetup(oneNode(4000, 3000));
+    interactions.fitToContent();
+    var scale = interactions.state.viewport.scale;
+
+    T.eq(scale < 1, true, 'a diagram larger than the window has to shrink');
+    T.eq(scale >= ns.interact.MIN_SCALE, true);
+  });
+
+  // Fit is "show me all of it", not "make it as large as possible".
+  T.test('Fit never magnifies past 100%', function () {
+    var interactions = zoomSetup(oneNode(20, 20));
+    interactions.fitToContent();
+    T.eq(interactions.state.viewport.scale, 1,
+         'a tiny diagram was blown up instead of being left at actual size');
+  });
+
+  T.test('a diagram that already fits ends up centred, not merely unscaled', function () {
+    var interactions = zoomSetup(oneNode(100, 50));
+    interactions.fitToContent();
+    var centre = centreOfView(interactions);
+
+    // Half a pixel of slack: settling on a view snaps it to the pixel grid.
+    T.near(centre.x, 50, 0.5);
+    T.near(centre.y, 25, 0.5);
+  });
 
   T.test('zoomTo(1) returns to 100% from either direction', function () {
     var a = zoomSetup();

@@ -8,7 +8,7 @@ Everything in this repo was written without ever being run: this machine has pyt
 and no JavaScript engine, so every claim about behaviour is reasoned from the code and
 the specs, not observed. That makes the first item the one that gates all the others.
 
-- [ ] **Open `tests.html`.** 218 tests, none of which have ever been executed. Expect all
+- [ ] **Open `tests.html`.** 221 tests, none of which have ever been executed. Expect all
       green; a failure here is as likely to be a bad test as a bad implementation.
 - [ ] **Open `index.html` from `file://`** in both Chrome and Firefox. Empty canvas,
       clean console. If it needs a server, the whole no-build-tooling premise is broken.

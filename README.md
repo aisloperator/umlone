@@ -69,6 +69,7 @@ repairs happened, with details in the browser console.
 | Pan | Middle-drag, or Ctrl/Cmd-drag, or scroll |
 | Zoom | Ctrl/Cmd + scroll, or the toolbar buttons |
 | Back to 100% | The **1:1** button, or Ctrl/Cmd+0 |
+| Show the whole diagram | The **Fit** button. It shrinks to fit and stops at 100% — it never magnifies |
 | Print this diagram | Ctrl/Cmd+P, or the toolbar button |
 | Undo / redo | Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z |
 | Select all | Ctrl/Cmd+A |
