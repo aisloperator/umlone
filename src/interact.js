@@ -29,6 +29,26 @@
   var DOUBLE_CLICK_MS = 450;
   var DOUBLE_CLICK_SLOP = 6;
 
+  // Where the viewport sits between device pixels decides whether a 1px border reads as a
+  // line or as a smudge. A stroke centred on a whole pixel straddles two of them and is
+  // drawn as two half-lit rows; centred on a pixel boundary it covers exactly one. Since
+  // diagram coordinates are whole numbers — placement snaps to the grid and preferredSize
+  // ceils — putting the viewport on a half pixel puts every horizontal and vertical edge
+  // of every box on a boundary.
+  //
+  // Fit leaves an arbitrary offset behind: it halves the leftover space and multiplies by
+  // whatever scale it picked. Restoring the scale afterwards does not restore the offset,
+  // so a box could come back from Fit at 100% with its edges washed out — one nearly
+  // solid, the next nearly invisible — even though the zoom really was 100%.
+  //
+  // Anything that settles on a view aligns it. Wheel zoom does not: it is continuous, and
+  // a half-pixel of snap per event would move the point the zoom is anchored to.
+  function alignToPixels(view) {
+    view.x = Math.round(view.x - 0.5) + 0.5;
+    view.y = Math.round(view.y - 0.5) + 0.5;
+    return view;
+  }
+
   // Pure, and module-level so it can be tested directly.
   //
   // No separate "the pointer moved, cancel the pair" bookkeeping is needed: a drag ends
@@ -65,7 +85,7 @@
       tool: { type: 'select', kind: null },
       selectedNodes: {},
       selectedEdges: {},
-      viewport: { x: 40, y: 40, scale: 1 },
+      viewport: alignToPixels({ x: 40, y: 40, scale: 1 }),
       pendingEdge: null,
       marquee: null,
       edgeSourceNodeId: null
@@ -503,6 +523,8 @@
         state.marquee = null;
       }
 
+      if (gesture.type === 'pan') { alignToPixels(state.viewport); }
+
       // A package that was dragged somewhere new may now sit inside a different package.
       if (gesture.type === 'move' && gesture.moved) {
         reparentMovedNodes(Object.keys(gesture.origins));
@@ -756,6 +778,7 @@
         state.viewport.x -= evt.deltaX;
         state.viewport.y -= evt.deltaY;
       }
+      alignToPixels(state.viewport);
       onRender();
     }
 
@@ -763,18 +786,19 @@
       var rect = svg.getBoundingClientRect();
       var cx = evt.clientX - rect.left;
       var cy = evt.clientY - rect.top;
-      applyZoom(state.viewport.scale * factor, cx, cy);
+      applyZoom(state.viewport.scale * factor, cx, cy, false);
     }
 
     // Keeps the point under (cx, cy) fixed while the scale changes, so zooming feels
     // anchored to the cursor rather than to the corner.
-    function applyZoom(scale, cx, cy) {
+    function applyZoom(scale, cx, cy, align) {
       commitInlineEdit();
       var next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
       var ratio = next / state.viewport.scale;
       state.viewport.x = cx - (cx - state.viewport.x) * ratio;
       state.viewport.y = cy - (cy - state.viewport.y) * ratio;
       state.viewport.scale = next;
+      if (align !== false) { alignToPixels(state.viewport); }
       onRender();
     }
 
@@ -782,7 +806,7 @@
     // position to anchor to.
     function zoomTo(scale) {
       var rect = svg.getBoundingClientRect();
-      applyZoom(scale, rect.width / 2, rect.height / 2);
+      applyZoom(scale, rect.width / 2, rect.height / 2, true);
     }
 
     function zoomBy(factor) {
@@ -798,7 +822,7 @@
       var rect = svg.getBoundingClientRect();
 
       if (!box || box.w === 0 || box.h === 0) {
-        state.viewport = { x: 40, y: 40, scale: 1 };
+        state.viewport = alignToPixels({ x: 40, y: 40, scale: 1 });
         onRender();
         return;
       }
@@ -811,11 +835,11 @@
       );
       scale = Math.max(MIN_SCALE, scale);
 
-      state.viewport = {
+      state.viewport = alignToPixels({
         scale: scale,
         x: (rect.width - box.w * scale) / 2 - box.x * scale,
         y: (rect.height - box.h * scale) / 2 - box.y * scale
-      };
+      });
       onRender();
     }
 
@@ -967,6 +991,7 @@
     GRID: GRID,
     DOUBLE_CLICK_MS: DOUBLE_CLICK_MS,
     DOUBLE_CLICK_SLOP: DOUBLE_CLICK_SLOP,
-    isDoublePress: isDoublePress
+    isDoublePress: isDoublePress,
+    alignToPixels: alignToPixels
   };
 })(UMLOne);

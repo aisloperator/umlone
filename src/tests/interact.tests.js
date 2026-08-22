@@ -120,8 +120,58 @@
     interactions.zoomTo(1);
     var after = centreOfView(interactions);
 
-    T.near(after.x, before.x, 0.001, 'the view must not jump sideways on reset');
-    T.near(after.y, before.y, 0.001);
+    // Half a pixel of slack, not none: settling on a view snaps it to the pixel grid.
+    T.near(after.x, before.x, 0.5, 'the view must not jump sideways on reset');
+    T.near(after.y, before.y, 0.5);
+  });
+
+  // A 1px border centred on a whole pixel is drawn as two half-lit rows; centred on a
+  // boundary it covers one row solidly. Diagram coordinates are whole numbers, so a
+  // viewport on a half pixel is the difference between a box with edges and a box with
+  // smudges — which is what came back from Fit followed by 1:1 before this.
+  function isAligned(view) {
+    return Math.abs(view.x - (Math.round(view.x - 0.5) + 0.5)) < 1e-9 &&
+           Math.abs(view.y - (Math.round(view.y - 0.5) + 0.5)) < 1e-9;
+  }
+
+  T.test('alignToPixels lands on a half pixel, moving by at most half a pixel', function () {
+    [0, 40, -619.5, 220.4375, 168, 1e6 + 0.31].forEach(function (v) {
+      var aligned = ns.interact.alignToPixels({ x: v, y: -v });
+      T.eq(isAligned(aligned), true, v + ' did not land on a half pixel');
+      T.eq(Math.abs(aligned.x - v) <= 0.5, true, v + ' moved more than half a pixel');
+    });
+  });
+
+  T.test('a fresh viewport is already aligned', function () {
+    T.eq(isAligned(zoomSetup().state.viewport), true);
+  });
+
+  T.test('Fit leaves the viewport aligned', function () {
+    var interactions = zoomSetup();
+    interactions.fitToContent();
+    T.eq(isAligned(interactions.state.viewport), true);
+  });
+
+  // The reported bug: Fit divides the leftover space in half and multiplies by the scale
+  // it chose, leaving an offset with an arbitrary fraction. Restoring the scale does not
+  // restore the offset, so the box came back at a true 100% with washed-out edges.
+  T.test('1:1 after Fit leaves the viewport aligned', function () {
+    var interactions = zoomSetup();
+    interactions.fitToContent();
+    interactions.zoomTo(1);
+
+    T.eq(interactions.state.viewport.scale, 1);
+    T.eq(isAligned(interactions.state.viewport), true,
+         'a true 100% still draws badly if the pan offset is a quarter of a pixel');
+  });
+
+  T.test('the zoom buttons leave the viewport aligned too', function () {
+    var interactions = zoomSetup();
+    interactions.fitToContent();
+    interactions.zoomBy(1.2);
+    T.eq(isAligned(interactions.state.viewport), true);
+    interactions.zoomBy(1 / 1.2);
+    T.eq(isAligned(interactions.state.viewport), true);
   });
 
   T.test('zoomTo is clamped like every other zoom', function () {
