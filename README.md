@@ -9,20 +9,24 @@ No license is given.
 
 ## Running it
 
-Double-click `index.html`. That is the whole procedure.
+**Live: <https://www.aisloperator.com/umlone/>** — nothing to install.
+
+Or clone the repository and double-click `index.html`. That is the whole procedure: it
+runs the same either way, because there is nothing to serve.
 
 There is no build step, no package manager, no dev server, and nothing to download. The
 editor is plain JavaScript and SVG loaded with classic `<script>` tags, which is
 deliberate: ES modules are blocked by CORS over `file://`, so using them would have meant
-running a local server just to open the editor.
+running a local server just to open the editor — and the hosted copy is the same files,
+not a build of them.
 
 To try it out, use **Open…** and pick `samples/example.uml.json`, then press **Fit**.
 
 ### Tests
 
-Open `tests.html`. It runs the whole suite in that browser and prints a pass/fail list.
-Everything runs against the real DOM, which is the only place text measurement and SVG
-geometry mean anything.
+Open [`tests.html`](https://www.aisloperator.com/umlone/tests.html), or the local copy. It
+runs the whole suite in that browser and prints a pass/fail list. Everything runs against
+the real DOM, which is the only place text measurement and SVG geometry mean anything.
 
 ## Saving and opening
 

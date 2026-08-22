@@ -83,8 +83,16 @@ and never settled.
 - [ ] Incremental rendering. Every change redraws the whole diagram, which is correct and
       fast enough at class-diagram sizes and would not be at thousands of elements.
 
-## Housekeeping
+## Hosting
 
-- [ ] **Check whether `github.com/aisloperator/umlone` is public or private.** It was
-      created outside this session, so its visibility has never been confirmed from here.
-      If it was created public, everything pushed is already visible to anyone.
+The repository is public and served by GitHub Pages at
+<https://www.aisloperator.com/umlone/>.
+
+- [ ] **Confirm the live site works**, which is also the easiest way to do most of the
+      checks above — no clone required, and it can be opened on any machine.
+- [ ] Do **not** add a `CNAME` file or set a custom domain in this repository's Pages
+      settings. The domain belongs to the account's user site, and a project site under
+      it is served at `/umlone/` automatically. Claiming the same domain here would
+      collide with the site that owns it.
+- [ ] Remember that Pages caches for about ten minutes. A push is not live immediately,
+      and a stale page is not a broken deploy.
