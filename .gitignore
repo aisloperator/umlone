@@ -10,6 +10,7 @@ desktop.ini
 *.swo
 .idea/
 .vscode/
+.claude/
 
 # Documents saved out of the editor while testing. Keep samples/ tracked, but a stray
 # download landing in the repo root should not be committed by accident.
